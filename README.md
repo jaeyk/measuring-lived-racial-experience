@@ -1,2 +1,2 @@
 # analyzing-racial-lived-experience
-Analyzing Racial Lived Experience Using Factor, Principal Component, and Regression Analysis
+Measuring racial lived experience using factor analysis
