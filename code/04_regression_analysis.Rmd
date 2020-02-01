@@ -1,0 +1,135 @@
+---
+title: "Regression analysis"
+author: "Jae Yeon Kim"
+output:
+  html_document: 
+    toc: true
+    theme: united
+---
+
+## 0. Setup 
+
+```{r}
+
+# Clean up the environment
+
+# rm(list = ls())
+
+# Import libraries (adapted from this link: https://stackoverflow.com/questions/4090169/elegant-way-to-check-for-missing-packages-and-install-them)
+
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load(
+        tidyverse, # for the tidyverse framework 
+        ggthemes, # for fancy ggplot themes
+        psych, # for psychological tools 
+        factoextra, # for extracting and visualizing the results of multivariate data analyses 
+        FactoMineR # for multivariate exploratory data analysis and data mining 
+)
+
+```
+
+## 1. Importing files 
+
+Importing the file that we created in `02_imputation.Rmd`.
+
+```{r}
+
+# Import 
+
+imputed <- read.csv("/home/jae/analyzing-racial-lived-experience/processed_data/imputed.csv")
+
+```
+
+
+## 2. Selecting variables 
+
+I first select variables that are related to the presumed three dimensions of racial experience (everyday challenge, micro-aggression and discrimination)
+
+```{r}
+
+# Selecting variables 
+
+vars <- imputed %>%
+  dplyr::select(q5_1_b, q5_1_c, q5_1_d, q5_1_e, q5_1_g, q5_1_h, q5_1_i, q5_2_a, q5_2_b, q5_2_c, q5_2_d, q5_2_e, q5_2_f, q5_7_a, q5_7_b, q5_7_c, q5_7_d, q5_7_e, q5_7_f, q5_7_g, q5_7_h, q5_7_i, q5_7_j, q5_7_k, q5_7_l)
+
+# Renaming these variables 
+
+vars <- all_vars %>%
+  rename(service_unfriendly = q5_1_b,
+         english_proficiency = q5_1_c,
+         afraid_of_you = q5_1_d,
+         thought_dishonest = q5_1_e,
+         insulted = q5_1_g,
+         threatened = q5_1_h,
+         name_mispronounced = q5_1_i,
+         promotion_denied = q5_2_a,
+         unfairly_fired = q5_2_b,
+         job_rejected = q5_2_c,
+         policy_brutality = q5_2_d,
+         housing_discrimination = q5_2_e,
+         neighbor_hostility = q5_2_f,
+         visa_delay = q5_7_a,
+         school_quality = q5_7_b,
+         school_bullied = q5_7_c,
+         college_affordability = q5_7_d,
+         elderly_care = q5_7_e,
+         medical_care = q5_7_f,
+         rent_affordability = q5_7_g,
+         college_debt = q5_7_h,
+         medical_debt = q5_7_i,
+         card_debt = q5_7_j,
+         child_care = q5_7_k,
+         little_saving = q5_7_l)
+
+```
+
+## 3. Factor analysis 
+
+### 3.1. How many factors?
+
+We assumed that there are three factors. Let's check this assumption.
+
+```{r}
+
+parallel <- psych::fa.parallel(vars, fm = 'minres', fa = 'fa')
+
+```
+
+```{r}
+
+threefactor <- fa(vars, nfactors = 3, 
+                  rotate = 'oblimin', 
+                  fm = 'minres')
+
+factor_frame <- threefactor$loadings %>%
+                 unclass() %>%
+                 as.data.frame()
+
+```
+
+# Visusalize
+
+```{r}
+
+factor_df <- data.frame(Measures = rownames(factor_frame), 
+              everyday_challenge = factor_frame$MR1,
+              micro_aggression = factor_frame$MR2,
+              discrimination = factor_frame$MR3)
+
+factor_df %>%
+  gather(key = "Factor", value = "Loading", 
+         everyday_challenge:discrimination) %>%
+  ggplot(aes(x = factor(Measures, levels = factor_df$Measures), y = Loading, fill = Loading)) +
+    geom_bar(stat = "identity") +
+    coord_flip() +
+    facet_wrap(~Factor, nrow = 1) +
+    scale_fill_gradient2(name = "Loading",
+                         high = "blue", mid = "white", low = "red", midpoint = 0, guide = F) +
+      labs(y= "Loading Strength", x = "Measures",
+           title = "Factor Analysis Results",
+           subtitle = "Limited to Asian American Pacific Isladner respondents",
+           caption = "National Asian American Suvrey (2016)") +
+      theme_fivethirtyeight()
+
+ggsave("factor_analysis.png")
+```

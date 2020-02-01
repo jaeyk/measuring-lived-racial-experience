@@ -1,0 +1,250 @@
+---
+title: "Factor analysis"
+author: "Jae Yeon Kim"
+output:
+  html_document: 
+    toc: true
+    theme: united
+---
+
+## 0. Setup 
+
+```{r}
+
+# Clean up the environment
+
+# rm(list = ls())
+
+# Import libraries (adapted from this link: https://stackoverflow.com/questions/4090169/elegant-way-to-check-for-missing-packages-and-install-them)
+
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load(
+        tidyverse, # for the tidyverse framework 
+        ggthemes, # for fancy ggplot themes
+        psych, # for psychological tools 
+        factoextra, # for extracting and visualizing the results of multivariate data analyses 
+        FactoMineR # for multivariate exploratory data analysis and data mining 
+)
+
+```
+
+## 1. Importing files 
+
+Importing the file that we created in `02_imputation.Rmd`.
+
+```{r}
+
+# Import 
+
+imputed <- read.csv("/home/jae/analyzing-racial-lived-experience/processed_data/imputed.csv")[,-1] # Ignore the first column
+
+```
+
+
+## 2. Selecting variables 
+
+I first select variables that are related to the presumed three dimensions of racial experience (everyday challenge, micro-aggression and discrimination)
+
+```{r}
+
+# Selecting variables 
+
+vars <- imputed %>%
+  dplyr::select(q5_1_b, q5_1_c, q5_1_d, q5_1_e, q5_1_g, q5_1_h, q5_1_i, # micro-aggression 
+                q5_2_a, q5_2_b, q5_2_c, q5_2_d, q5_2_e, q5_2_f, # discrimination
+                q5_7_a, q5_7_b, q5_7_c, q5_7_d, q5_7_e, q5_7_f, q5_7_g, q5_7_h, q5_7_i, q5_7_j, q5_7_k, q5_7_l) # everyday challenge
+
+```
+
+I then rename these variables to be more intelligible as they are going to appear in plots.
+
+```{r}
+
+# Renaming these variables 
+
+vars <- vars %>%
+  rename(# micro-agression
+         service_unfriendly = q5_1_b,
+         english_proficiency = q5_1_c,
+         afraid_of_you = q5_1_d,
+         thought_dishonest = q5_1_e,
+         insulted = q5_1_g,
+         threatened = q5_1_h,
+         name_mispronounced = q5_1_i,
+         
+         # discrimination 
+         promotion_denied = q5_2_a,
+         unfairly_fired = q5_2_b,
+         job_rejected = q5_2_c,
+         policy_brutality = q5_2_d,
+         housing_discrimination = q5_2_e,
+         neighbor_hostility = q5_2_f,
+         
+         # everyday challenge
+         visa_delay = q5_7_a,
+         school_quality = q5_7_b,
+         school_bullied = q5_7_c,
+         college_affordability = q5_7_d,
+         elderly_care = q5_7_e,
+         medical_care = q5_7_f,
+         rent_affordability = q5_7_g,
+         college_debt = q5_7_h,
+         medical_debt = q5_7_i,
+         card_debt = q5_7_j,
+         child_care = q5_7_k,
+         little_saving = q5_7_l)
+
+```
+
+## 3. Factor analysis 
+
+### 3.1. Parallel analysis: How many factors?
+
+We assumed that there are three factors (latent or unobserved dimensions) of racial experience. Let's check this assumption. The `fa.parallel` function from the `psyche package` compares the eigenvalues of the correlation matrix ([the metric of variance explained]((https://sakaluk.wordpress.com/2016/05/26/11-make-it-pretty-scree-plots-and-parallel-analysis-using-psych-and-ggplot2/))) from the observed data with the eigenvalues generated from random data. The Y-axis indicates eignevalues and the X-indicates the number of possible factors from 1 to the maximum. You can easily see that after three factors, the Y value drops immediately. I set the `fm argument` in the `fa.parallel` function to 'ml" (maximum likelihood estimation) to use common factor model, which assumes that covariance between items are explained by both "shared latent causes" as well as "unexplained variable-specific variance" (for more inforation, see this [link](https://psu-psychology.github.io/psy-597-SEM/06_factor_models/factor_models.html)). The result (a change in the slope) shows that assuming three factors is plausible to best explain the variance between items.
+
+
+```{r}
+
+psych::fa.parallel(vars, 
+                   fm = 'ml', # eigenvalues using maxium likelihood (common factor model) 
+                   fa = 'fa', # principal axix factor analysis
+                   n.iter = 30, # number of iterations
+                   SMC = TRUE, # multiple correlations                     
+                   quant = .95) 
+ 
+```
+
+### 3.2. Factor analysis 
+
+After validating the `nfactors = 3` assumption, I ran the factor analysis using the observed data. Please also note that I assume that these factors are orthogonal by setting the `rotate  = 'oblimin'.`For interpretation, it means the factors show the correlations between question items and factors (for more information, see this [link](https://psu-psychology.github.io/psy-597-SEM/06_factor_models/factor_models.html#looking-under-the-hood-of-the-fa-model)). The factor analysis also confirms that 3 factors are sufficient to explain the covariance between items and factors.
+
+```{r}
+
+# Factor analysis 
+factor_analysis <- fa(vars, 
+                  nfactors = 3, # three factors  
+                  rotate = 'varimax', 
+                  fm = 'ml') # ML estimation 
+
+# Summary 
+summary(factor_analysis)
+```
+
+### 3.3. Data visualization
+
+Here, the goal is to visualize the relationship between each question item and three factors. I proceed in two steps. I first extract factor loadings (the correlations between items and questions) and then put them into a dataframe. 
+
+```{r}
+
+# Extract factor loadings 
+factor_frame <- factor_analysis$loadings %>%
+                 unclass() %>%
+                 as.data.frame()
+
+# Putting them into a data frame
+factor_df <- data.frame(Measures = rownames(factor_frame), 
+              everyday_challenge = factor_frame$ML1,
+              micro_aggression = factor_frame$ML2,
+              discrimination = factor_frame$ML3)
+
+```
+
+Next, I visualize the relationship between factor loadings and three items.
+
+```{r}
+
+factor_df %>%
+  gather(key = "Factor", value = "Loading", 
+         everyday_challenge:discrimination) %>%
+  ggplot(aes(x = factor(Measures, levels = factor_df$Measures), y = Loading, fill = Loading)) +
+    geom_bar(stat = "identity") +
+    coord_flip() +
+    facet_wrap(~Factor, nrow = 1) +
+    scale_fill_gradient2(name = "Loading",
+                         high = "blue", mid = "white", low = "red", midpoint = 0, guide = F) +
+      labs(y= "Loading Strength", x = "Measures",
+           title = "Factor Analysis Results",
+           caption = "National Asian American Suvrey (2016)") +
+      theme_fivethirtyeight()
+
+ggsave("/home/jae/analyzing-racial-lived-experience/outputs/factor_analysis.png")
+
+```
+
+## 4. Creating index variables 
+
+We are also interested to see how scores for these factors vary across racial groups. For example, it is curious to know whether the level of marginality varies across racial groups depending on which measure we use. I created index variables by calculating the mean of survey items related to each factor. Please, note that I dropped the `name_mispronounced` variable in doing this, as its factor loading is quite low.
+
+```{r}
+
+# Micro-aggression
+
+micro_aggression <- imputed %>% 
+  dplyr::select(q5_1_b, q5_1_c, q5_1_d, q5_1_e, q5_1_g, q5_1_h) %>% 
+  rowMeans %>% as.data.frame()
+
+# Discrimination 
+
+discrimination <- imputed %>% 
+  dplyr::select(q5_2_a, q5_2_b, q5_2_c, q5_2_d, q5_2_e, q5_2_f) %>% 
+  rowMeans %>% as.data.frame()
+
+# Everyday challenge
+
+everyday_challenge <- imputed %>% 
+  dplyr::select(q5_7_a, q5_7_b, q5_7_c, q5_7_d, q5_7_e, q5_7_f, q5_7_g, q5_7_h, q5_7_i, q5_7_j, q5_7_k, q5_7_l) %>% 
+  rowMeans %>% as.data.frame()
+
+```
+
+## 5. Replacing the survey questions with the new columns 
+
+I then replaced the survey questions related to racial experience with the new variables that represent three factors.
+
+```{r}
+
+# Remove old questions 
+
+pre_factored <- imputed %>%
+  dplyr::select(-c(q5_1_b, q5_1_c, q5_1_d, q5_1_e, q5_1_g, q5_1_h, q5_1_i, # micro-aggression 
+                q5_2_a, q5_2_b, q5_2_c, q5_2_d, q5_2_e, q5_2_f, # discrimination
+                q5_7_a, q5_7_b, q5_7_c, q5_7_d, q5_7_e, q5_7_f, q5_7_g, q5_7_h, q5_7_i, q5_7_j, q5_7_k, q5_7_l)) # everyday challenge 
+
+# Insert new columns 
+
+factored <- bind_cols(pre_factored, micro_aggression, discrimination, everyday_challenge)
+
+# Name them 
+
+colnames(factored)[15:17] <- c("micro_aggression", "discrimination", "everyday_challenge")
+
+```
+
+## 6. Data visualization 
+
+Finally, I visualize the relationship between the mean of these index variables (the degree of agreements) and race. 
+
+```{r}
+
+factored %>%
+  filter(race != "Multiracial") %>% # exclude respondents identified as multiracials as they are extremeley small (lacking statistical power)
+  gather(key = "racial_experience", value = "measure",  micro_aggression, discrimination, everyday_challenge) %>% # gather to reshape the data
+  group_by(race, racial_experience) %>% # group to summarize
+  summarise(mean = mean(measure), # summarize mean, standard deviation, and n 
+            sd = sd(measure),
+            n = n()) %>%
+  mutate(se = sd / sqrt(n), # calculate standard errors and confidence intervals 
+         lower.ci = mean - qt(1 - (0.05 / 2), n - 1) * se,
+         upper.ci = mean + qt(1 - (0.05 / 2), n - 1) * se) %>%
+  ggplot(aes(x = reorder(race, mean), y = mean, ymax = upper.ci, ymin = lower.ci)) +
+    geom_pointrange(size = 0.7) + # point estimates plus confidence intervals 
+    theme_fivethirtyeight() +
+    coord_flip() +
+    labs(y= "Average score of survey responses", x = "Race",
+         title = "Different Dimension Matters More to Different Groups",
+         caption = "National Asian American Suvrey (2016)") +
+    facet_wrap(~racial_experience)
+
+ggsave("/home/jae/analyzing-racial-lived-experience/outputs/factor_analysis_by_race.png")
+
+```
