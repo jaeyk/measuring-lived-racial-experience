@@ -1,0 +1,291 @@
+---
+title: "Data cleaning"
+author: "Jae Yeon Kim"
+output:
+  html_document: 
+    toc: true
+    theme: united
+---
+
+## 0. Setup 
+
+```{r}
+
+# Clean up the environment
+
+# rm(list = ls())
+
+# Import libraries (adapted from this link: https://stackoverflow.com/questions/4090169/elegant-way-to-check-for-missing-packages-and-install-them)
+
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load(
+        foreign, # for importing stata files 
+        tidyverse, # for the tidyverse framework 
+        psych, # for psych tools  
+        ggthemes # for fancy ggplot themes
+)
+
+```
+
+## 1. Importing files 
+
+- I used the "National Asian American Survey (NAAS) 2016 Post-Election Survey" designed and collected by Karthick Ramakrishnan, Jennifer Lee, Taeku Lee, and Janelle Wong. The original data was accessible at: http://naasurvey.com/data/. The data I used in this project is the weighted version.
+- The data has 406 variables (the umber of columns) and 6,448 observations (the number of rows for each column). Also, please note that the outcome of the `table() function` which shows that every survey participant participated the full survey. 
+
+```{r}
+
+# Import 
+
+data <- read.dta("/home/jae/analyzing-racial-lived-experience/raw_data/naas16post-weighted.dta")
+
+# Participation 
+
+table(data$fullsurvey)
+
+```
+
+## 2. Selecting variables 
+
+We didn't need every variable for the data analysis. Let's select the only ones that we will use in the analysis. This way we can save the memory by reducing the number of variables from 406 to 40. In doing so, it's also important to comment on variables to not miss or confuse between them. Of 43 variables, it appears only 1 variable is integer, 1 variable is character, and the rest of them are factors.
+
+```{r}
+
+# Select key variables 
+
+df <- data %>%
+  dplyr::select(
+  
+    ## Covariates
+    
+    race, # race 
+    pid4, # party ID
+    q10_2b, # education level 
+    q10_15, # income level
+    q10_18, # age
+    s9a, # states 
+    forborn, # foreign born 
+    citizen, # citizen 
+    
+    ## DV: Identity and gorup formation outcomes
+    
+    ### Linked fate (group consciousness)
+    
+    q4_3, # other race linked fate agreement 
+    
+    ### Identity 
+    
+    q4_2a, # racial identity 
+    q4_2d, # American identity 
+    
+    ### What race means 
+    
+    q4_5a, # common race 
+    q4_5b, # common culture 
+    q4_5c, # common econ interests
+    q4_5d, # common political interests
+    
+    ## IV: Racial lived experience measures
+    
+    ### Micro-aggression
+    
+    q5_1_b, # service unfriendly 
+    q5_1_c, # English proficiency 
+    q5_1_d, # afraid of you 
+    q5_1_e, # thought dishonest 
+    q5_1_g, # insulted 
+    q5_1_h, # threatened  
+    q5_1_i, # name mispronounced 
+    
+    ### Discrimination 
+    
+    q5_2_a, # promotion denied 
+    q5_2_b, # unfairly fired 
+    q5_2_c, # job rejected 
+    q5_2_d, # police brutality  
+    q5_2_e, # housing discrimination  
+    q5_2_f, # neighbor hostility 
+    
+    ### Everyday challenge
+    
+    q5_7_a, # visa delay 
+    q5_7_b, # school quality 
+    q5_7_c, # school bullied 
+    q5_7_d, # college affordability 
+    q5_7_e, # elderly care 
+    q5_7_f, # medical care
+    q5_7_g, # rent affordability 
+    q5_7_h, # college debt
+    q5_7_i, # medical debt 
+    q5_7_j, # card debt
+    q5_7_k, # childcare 
+    q5_7_l # little saving 
+    ) 
+
+# Glimpse
+glimpse(df)
+
+```
+
+## 3. Recoding values 
+
+### 3.1. Inspecting unique values 
+
+```{r}
+
+# Check how values are coded 
+apply(df, 2, unique)
+
+```
+
+
+### 3.2. Capture only numeric elements of ordered survey responses (factors)
+
+```{r}
+
+# Create a function for capturing only numeric elemetns of survey responses 
+
+return_numeric <- function(x) {as.numeric(gsub("([0-9]+).*$", "\\1", x))} # regular expression
+
+recoded <- df %>%
+  select_if(negate(is.character)) %>% # exclude the only character variable 
+  apply(2, return_numeric) %>% # apply the function to every column in the subsetted data 
+  as.data.frame() # turn it into a dataframe (otherwise, it's a matrix)
+
+# Rebind the character column (states)
+
+recoded$states <- df$s9a
+
+```
+
+### 3.3. Some variables better treated as factors 
+
+Some variables are better treated as factors because they are categorical variables (e.g., race). Also, please note that I collapsed the original 9 categories for race into a more simplified 7 categories. That way we have more statistical power, when we do subgroup analysis.
+
+```{r}
+
+# Race
+
+recoded$race <- recoded$race %>%
+  as.character() %>%
+  recode("1" = "AAPI") %>% # Originally Asian Americans 
+  recode("2" = "AAPI") %>% # Originally Pacific Islanders
+  recode("3" = "White") %>%
+  recode("4" = "Black") %>%
+  recode("5" = "Black") %>% # Originally African American
+  recode("6" = "Latino") %>%
+  recode("7" = "Native American") %>%
+  recode("9" = "Multiracial") %>%
+  as.factor()
+
+# Party ID
+
+recoded$pid4 <- as.factor(recoded$pid4)
+
+# States 
+
+recoded$states <- as.factor(recoded$states)
+
+# Foreign born status 
+
+recoded$forborn <- as.factor(recoded$forborn)
+
+# Citizenship status 
+
+recoded$citizen <- as.factor(recoded$citizen)
+
+```
+
+### 3.4. Replace non-response values (`9`, `88`, `99`, `8888`, `9999`) with `NA`s
+
+Please note that replacing non-response values with NAs increased the percentage of missing values in the dataframe from 19% to 22%.
+
+```{r}
+
+paste("What's the percentage of missing values in the data BEFORE replacing non-reponse values with NAs?:", mean(is.na(recoded)))
+
+recoded[recoded == 9] <- NA
+recoded[recoded == 88] <- NA
+recoded[recoded == 99] <- NA
+recoded[recoded == 8888] <- NA
+recoded[recoded == 9999] <- NA
+
+paste("What's the percentage of missing values in the data AFTER replacing non-reponse values with NAs?:", mean(is.na(recoded)))
+
+```
+
+### 3.5. Rescale responses 
+
+Rescale ordinal responses so that they are all on the same scale (0-1).
+
+```{r}
+
+# Re-scale ordinal responses 
+
+rescaled <- recoded %>%
+  dplyr::select(starts_with("q")) %>% # starts with q
+  apply(2, scales::rescale) %>%
+  as.data.frame() 
+
+```
+
+Also, we want to pay careful attention to binary responses (`Yes` or `No`). It is important to turn them into dummy variables, such as `Yes` coded as `1`. `No` coded as `0`. This practice reduced confusions when interpreting the percentage of the agreements on certain question items among survey respondents.
+
+```{r}
+
+# Function to recode binary responses 
+
+reverse_dummy <- function(data){
+  data[data == 1] <- 2
+  data[data == 0] <- 1
+  data[data == 2] <- 0
+  return(data)
+}
+
+```
+
+When we inspected how values are coded using `the apply() function` we found that the questions start wiht `q4_5`, `q5_1`, and `q5_2` contain binary responses.
+
+```{r}
+
+# Recode binary responses
+
+rescaled1 <- rescaled %>% 
+  dplyr::select(starts_with("q4_5")) %>%
+  apply(2, reverse_dummy) %>%
+  as.data.frame()
+
+rescaled2 <- rescaled %>% 
+  dplyr::select(starts_with("q5_1")) %>%
+  apply(2, reverse_dummy) %>%
+  as.data.frame()
+
+rescaled3 <- rescaled %>% 
+  dplyr::select(starts_with("q5_2")) %>%
+  apply(2, reverse_dummy) %>%
+  as.data.frame()
+  
+# Combin binary recoded columns 
+
+bi_rescaled <- bind_cols(rescaled1, rescaled2, rescaled3)
+
+# Combine with the original column 
+
+rescaled <- rescaled %>%
+  dplyr::select(-c(names(bi_rescaled))) %>%
+  bind_cols(bi_rescaled)
+
+# The other columns 
+
+scaled <- recoded %>%
+  dplyr::select(-starts_with("q")) %>%
+  bind_cols(rescaled)
+
+```
+
+## 5. Save the cleaned file 
+
+```{r}
+
+write.csv(scaled, "/home/jae/analyzing-racial-lived-experience/processed_data/scaled.csv")
+
+```
