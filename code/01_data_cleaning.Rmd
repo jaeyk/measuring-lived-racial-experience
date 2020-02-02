@@ -30,7 +30,7 @@ pacman::p_load(
 ## 1. Importing files 
 
 - I used the "National Asian American Survey (NAAS) 2016 Post-Election Survey" designed and collected by Karthick Ramakrishnan, Jennifer Lee, Taeku Lee, and Janelle Wong. The original data was accessible at: http://naasurvey.com/data/. The data I used in this project is the weighted version.
-- The data has 406 variables (the umber of columns) and 6,448 observations (the number of rows for each column). Also, please note that the outcome of the `table() function` which shows that every survey participant participated the full survey. 
+- The data has 406 variables (the number of columns) and 6,448 observations (the number of rows for each column). Also, please note that the outcome of the `table() function` which shows that every survey participant participated the full survey. 
 
 ```{r}
 
@@ -142,7 +142,7 @@ apply(df, 2, unique)
 
 ```{r}
 
-# Create a function for capturing only numeric elemetns of survey responses 
+# Create a function for capturing the first numeric elemetn of survey responses 
 
 return_numeric <- function(x) {as.numeric(gsub("([0-9]+).*$", "\\1", x))} # regular expression
 
@@ -282,10 +282,10 @@ scaled <- recoded %>%
 
 ```
 
-## 5. Save the cleaned file 
+  ## 5. Save the cleaned file 
 
 ```{r}
 
-write.csv(scaled, "/home/jae/analyzing-racial-lived-experience/processed_data/scaled.csv")
+write.csv(scaled, "/home/jae/analyzing-racial-lived-experience/processed_data/cleaned.csv")
 
 ```

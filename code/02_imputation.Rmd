@@ -9,6 +9,13 @@ output:
 
 ## 0. Setup 
 
+I tweaked the global option of the R Markdown to resize figures produced by ggplot2.
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(fig.width = 12, fig.height = 12, 
+                      echo = FALSE, warning = FALSE, message = FALSE) # global setting for enlarging image size
+```
+
 ```{r}
 
 # Clean up the environment
@@ -39,7 +46,7 @@ Importing the file that we created in `01_data_cleaning.Rmd`.
 
 # Import 
 
-scaled <- read.csv("/home/jae/analyzing-racial-lived-experience/processed_data/scaled.csv")[,-1] # ignore the first column (=row numbers)
+cleaned <- read.csv("/home/jae/analyzing-racial-lived-experience/processed_data/cleaned.csv")[,-1] # ignore the first column (=row numbers)
 
 ```
 
@@ -58,7 +65,7 @@ To examine the nature of missigness in the data, let's first take a look at how 
 
 # Visualize the percentaeg of missing values by variables and subgroups 
 
-scaled %>%
+cleaned %>%
   group_by(race) %>% # group by race
   miss_var_summary() %>% # summary 
   filter(n_miss != 0) %>% # show variables that include missing values
@@ -68,7 +75,7 @@ scaled %>%
     facet_wrap(~race) + # facet by race 
     coord_flip() # flip axes 
 
-ggsave("/home/jae/analyzing-racial-lived-experience/outputs/missing_rate.png")
+ggsave("/home/jae/analyzing-racial-lived-experience/outputs/missing_rate.png", height = 8)
 ```
 
 ### 2.2. Little's Test 
@@ -77,7 +84,7 @@ Now, let's formally test whether the data misses values by random. Here, I used 
 
 ```{r eval=FALSE, include=FALSE}
 
-little_test_result <- scaled %>%
+little_test_result <- cleaned %>%
  LittleMCAR()
 
 little_test_result$p.value
@@ -91,11 +98,11 @@ One solution to missing values is to impute them based one the observed data. He
 
 ### 3.1. Imputing data 
 
-In this project, I used the `mice package` in R for multiple implication, which was developed by [Stef van Buuren](https://stefvanbuuren.name/). His book titled [Flexible Imputation of Missing Data](https://stefvanbuuren.name/fimd/) is a great resource for conducting imputation in R. Using the `mice function` from the package, I created five imputed data. [Applied Missing Data Analaysis with SPSS and (R)Studio](https://bookdown.org/mwheymans/bookmi/) (Heymans and Eekhout 2019) is another great resource.
+In this project, I used the `mice package` in R for multiple implication, which was developed by [Stef van Buuren](https://stefvanbuuren.name/). His book titled [Flexible Imputation of Missing Data](https://stefvanbuuren.name/fimd/) is a great resource for conducting imputation in R. Using the `mice function ()` from the package, I created five imputed data. [Applied Missing Data Analaysis with SPSS and (R)Studio](https://bookdown.org/mwheymans/bookmi/) (Heymans and Eekhout 2019) is another great resource.
 
 ```{r}
 
-imp <- mice(scaled,
+imp <- mice(cleaned,
      seed = 1234, # for reproducibility
      m = 5, # the number of imputations
      maxit = 10, # the max numbe of iterations 
@@ -110,7 +117,7 @@ imp <- mice(scaled,
 
 To evaluate imputations, I first measured the discrepancy between the distribution of imputed and that of observed values. If we assume missing at random (MAR, not completely random but still can be explained by certain variables), these distributions [do not need to be identicial](https://stefvanbuuren.name/fimd/sec-diagnostics.html), but they still should look similar.
 
-I used the `function densityplot()` from the `mice package` to display the kernel density estimates for the marginal distribution of the imputed (`red`) and observed values (`blue`). Kernel density estimation is calculated by weighting the distances of the data points. The plots show that the distributions of the imputed and observed values are quite close especially among itmes on a likert scale. 
+I used the `densityplot() function` from the `mice package` to display the kernel density estimates for the marginal distribution of the imputed (`red`) and observed values (`blue`). Kernel density estimation is calculated by weighting the distances of the data points. The plots show that the distributions of the imputed and observed values are quite close especially among itmes on a likert scale. 
 
 
 ```{r}
@@ -121,7 +128,7 @@ densityplot(imp, layout = c(1, 3))
 
 #### 3.2.2. Rubin's rule test 
 
-Another critical test is whether model fit changes depending on which imputed data we select. To examine this, I built a simple regression model, which is based on the idea that survey questions on everyday challenge should be strongly linearly associated. In addition, this case is nice as we found many missing values in these variables in the earlier exploratory analysis. I did Rubin's rule test using the `pool() function` from the `mice package`. The test "averages the estimates of the complete model" and "computes the total variance over the repeated analyse" (for more information, see [this function documentation](https://rdrr.io/cran/mice/man/pool.html)). The summary test result shows that the p-values for the regression coefficients are extremely small, which implies selecting one model over the other does make little difference (within imputation variance) for the model fit. One assumption for Rubin's rule test is the distribution of the data follows a normal distribution. Shapiro-Wilk test examines the correlation between the data and the corresponding normal scores and its result supports this assumption.
+Another critical test is whether model fit changes depending on which imputed data we select. To examine this, I built a simple regression model, which is based on the idea that survey questions on everyday challenge should be strongly linearly associated. In addition, this case is nice as we found many missing values in these variables in the earlier exploratory analysis. I did Rubin's rule test using the `pool() function` from the `mice package`. The test "averages the estimates of the complete model" and "computes the total variance over the repeated analyse" (for more information, see [this function documentation](https://rdrr.io/cran/mice/man/pool.html)). The summary test result shows that the p-values for the regression coefficients are extremely small. Selecting one model over the other does make little difference for the model fit (=little within imputation variance). Rubin's rule test assumes that the distribution of the data follows a normal distribution. I checked this assumption using Shapiro-Wilk test. 
 
 ```{r}
 
