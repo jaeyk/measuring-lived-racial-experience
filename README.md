@@ -171,7 +171,7 @@ factor_analysis <- fa(vars,
 
 ```
 
-In this section, the goal is to show how I visualized the relationship between each question item and three factors. I did this in two steps. I first extracted factor loadings ([correlation coefficients between observed variables and latent common factors](https://methods.sagepub.com/reference/encyc-of-research-design/n149.xml)) and then put them into a dataframe. 
+In this section, the goal is to show how I visualized the relationship between each question item and three factors. I did this in two steps. I first extracted factor loadings (correlation coefficients between observed data and factors) and then put them into a dataframe. 
 
 ```{R}
 
