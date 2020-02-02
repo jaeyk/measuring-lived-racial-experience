@@ -9,6 +9,13 @@ output:
 
 ## 0. Setup 
 
+I tweaked the global option of the R Markdown to resize figures produced by ggplot2.
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(fig.width = 12, fig.height = 8, 
+                      echo = FALSE, warning = FALSE, message = FALSE) # global setting for enlarging image size
+```
+
 ```{r}
 
 # Clean up the environment
@@ -100,7 +107,7 @@ vars <- vars %>%
 
 ### 3.1. Parallel analysis: How many factors?
 
-We assumed that there are three factors (latent or unobserved dimensions) of racial experience. Let's check this assumption. The `fa.parallel` function from the `psyche package` compares the eigenvalues of the correlation matrix ([the metric of variance explained]((https://sakaluk.wordpress.com/2016/05/26/11-make-it-pretty-scree-plots-and-parallel-analysis-using-psych-and-ggplot2/))) from the observed data with the eigenvalues generated from random data. The Y-axis indicates eignevalues and the X-indicates the number of possible factors from 1 to the maximum. You can easily see that after three factors, the Y value drops immediately. I set the `fm argument` in the `fa.parallel` function to 'ml" (maximum likelihood estimation) to use common factor model, which assumes that covariance between items are explained by both "shared latent causes" as well as "unexplained variable-specific variance" (for more inforation, see this [link](https://psu-psychology.github.io/psy-597-SEM/06_factor_models/factor_models.html)). The result (a change in the slope) shows that assuming three factors is plausible to best explain the variance between items.
+We assumed that there are three factors (latent or unobserved dimensions) of racial experience. Let's check this assumption. The `fa.parallel` function from the `psyche package` compares the eigenvalues of the correlation matrix ([the metric of variance explained]((https://sakaluk.wordpress.com/2016/05/26/11-make-it-pretty-scree-plots-and-parallel-analysis-using-psych-and-ggplot2/))) from the observed data with the eigenvalues generated from random data. The Y-axis indicates eignevalues and the X-indicates the number of possible factors from 1 to the maximum. You can easily see that after three factors, the Y value drops immediately. I set the `fm argument` in the `fa.parallel` function to 'ml` (maximum likelihood estimation) to use common factor model, which assumes that covariance between items are explained by both "shared latent causes" as well as "unexplained variable-specific variance" (for more inforation, see this [link](https://psu-psychology.github.io/psy-597-SEM/06_factor_models/factor_models.html)). The result (again, an abrupt change in the slope) shows that assuming three factors is plausible.
 
 
 ```{r}
@@ -116,14 +123,14 @@ psych::fa.parallel(vars,
 
 ### 3.2. Factor analysis 
 
-After validating the `nfactors = 3` assumption, I ran the factor analysis using the observed data. Please also note that I assume that these factors are orthogonal by setting the `rotate  = 'oblimin'.`For interpretation, it means the factors show the correlations between question items and factors (for more information, see this [link](https://psu-psychology.github.io/psy-597-SEM/06_factor_models/factor_models.html#looking-under-the-hood-of-the-fa-model)). The factor analysis also confirms that 3 factors are sufficient to explain the covariance between items and factors.
+After validating the `nfactors = 3` assumption, I ran the factor analysis using the observed data. I assume that these factors are orthogonal by setting the `rotate  = 'oblimin'.`For interpretation, it means the factors show the correlations between question items and factors (for more information, see this [link](https://psu-psychology.github.io/psy-597-SEM/06_factor_models/factor_models.html#looking-under-the-hood-of-the-fa-model)). 
 
 ```{r}
 
 # Factor analysis 
 factor_analysis <- fa(vars, 
                   nfactors = 3, # three factors  
-                  rotate = 'varimax', 
+                  rotate = 'oblimin', 
                   fm = 'ml') # ML estimation 
 
 # Summary 
@@ -132,7 +139,7 @@ summary(factor_analysis)
 
 ### 3.3. Data visualization
 
-Here, the goal is to visualize the relationship between each question item and three factors. I proceed in two steps. I first extract factor loadings (the correlations between items and questions) and then put them into a dataframe. 
+Here, the goal is to visualize the relationship between each question item and three factors. I did in two steps. I first extracted factor loadings ([correlation coefficients between observed variables and latent common factors](https://methods.sagepub.com/reference/encyc-of-research-design/n149.xml)) and then put them into a dataframe. 
 
 ```{r}
 
@@ -149,7 +156,7 @@ factor_df <- data.frame(Measures = rownames(factor_frame),
 
 ```
 
-Next, I visualize the relationship between factor loadings and three items.
+Next, I visualized the relationship between factor loadings and three factors.
 
 ```{r}
 
@@ -173,7 +180,7 @@ ggsave("/home/jae/analyzing-racial-lived-experience/outputs/factor_analysis.png"
 
 ## 4. Creating index variables 
 
-We are also interested to see how scores for these factors vary across racial groups. For example, it is curious to know whether the level of marginality varies across racial groups depending on which measure we use. I created index variables by calculating the mean of survey items related to each factor. Please, note that I dropped the `name_mispronounced` variable in doing this, as its factor loading is quite low.
+We are also interested to see how scores for these factors vary across racial groups. For example, it is curious to know whether the level of marginality varies across racial groups depending on which measure we use. I created index variables by calculating the mean of survey items related to each factor. I dropped the `name_mispronounced` variable in doing this, as its factor loading is quite low.
 
 ```{r}
 
@@ -241,7 +248,7 @@ factored %>%
     theme_fivethirtyeight() +
     coord_flip() +
     labs(y= "Average score of survey responses", x = "Race",
-         title = "Different Dimension Matters More to Different Groups",
+         title = "Subgroup Descriptive Analysis",
          caption = "National Asian American Suvrey (2016)") +
     facet_wrap(~racial_experience)
 
