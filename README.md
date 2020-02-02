@@ -155,7 +155,7 @@ vars <- vars %>%
          name_mispronounced = q5_1_i,
 ```
 
-- Taeku and I assumed that there are three dimensions of racial lived experience. We do not observe these constructs from the observations. What we have is a battery of survey questions. What we argue is, essentially, these survey questions have three latent (or unobserved) dimensions, which can be examined by how these survey questions hang together. Factor analysis, by definition, is one way to accomplish this task. Factors are latent dimensions in the data. 
+- Taeku and I assumed that there are three dimensions of racial lived experience. We do not observe these constructs from the observations. What we have is a battery of survey questions. What we argue is, essentially, these survey questions have three latent (or unobserved) dimensions, which can be examined by how these survey questions hang together. Factor analysis, by definition, is one way to accomplish this task because factors are latent dimensions in data. 
 - Let's first check whether the assumption about the number of factors is valid. 
 
 **Figure 3. Parallel Analysis Result**
