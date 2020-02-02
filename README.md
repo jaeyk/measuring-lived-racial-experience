@@ -5,12 +5,16 @@
 
 - The goal of this article is to document **how I cleaned, imputed, and ran a factor analysis on a large-scale survey data** (2016 National Asian American Survey) to measure the multi-dimensions of racial lived experience. This is part of the research which I have conducted with my advisor [Taeku Lee](https://www.law.berkeley.edu/our-faculty/faculty-profiles/taeku-lee/) (UC Berkeley) for the past two years (2018-2020). 
 
+  ​
+
 
 
 ## Motivation 
 
 - My focus is **Not Substantial**. I do not intend to discuss why we view racial lived experience as a multidimensional concept and why we measure it using particular questions used in this particular survey. That discussion goes far beyond the scope of this document and will be included in the paper based on this project. 
 - The main focus is **Practical**. Survey data is the bread and butter of opinion/behavioral research. However, most of the survey data is not saved in a format that is suitable for statistical analysis. Therefore, researchers and practitioners spend numerous hours to clean the data. Over the past few years, I realized that cleaning survey data has patterns. I want to share some of my tricks to exploit these patterns as they can be helpful for researchers and practitioners. In the near future, I plan to develop an R package that helps preprocessing survey data. For that reason, please feel free to create issues on the Git repository when you have difficulties applying my code to your project.
+
+
 
 
 ## Workflow
@@ -87,6 +91,8 @@ reverse_dummy <- function(data){
 
 - When the cleaning process is done, save the file as "01_cleaned.csv" in the `processed_data` subdirectory within your project director. Separate your raw data from processed data and your code from your output. In general, input, process (computation), and output should be separated from each other. When you work with other people or need to share your project with someone else, this little structure helps them a lot to navigate many files you created. Don't underestimate the number of files you end up creating. The longer you work on the project, the more files you will produce. Sort them earlier rather than later. Also, don't forget naming files in an informative way (numbering plus for the research stage that is complete).
 
+  ​
+
 ### 02_Imputing Data [[02_imputation.Rmd](https://github.com/jaeyk/measuring-racial-lived-experience/blob/master/code/02_imputation.Rmd)]
 
 - Even if a survey data is collected by probability sampling (a sampling method that involves random selection), it does not imply that the data is representative (=sampling estimates are unbiased estimators of population parameters). The survey might have failed to recruit survey respodnents as they planned. Then, we we may need to weight data. Also, these respondents might have missed or not responded all stated questions. Then, we may need imputate data. This missing data problem arises because data collection process is not entirely under the control of the people who designed and implemented a survey. Missing data is bound to occur and we should pay attention to them, especially whether the pattern of their occurance is random or systematic. 
@@ -109,7 +115,7 @@ imp <- mice(scaled,
      print = FALSE) 
 
 ```
- 
+
 - The goal of imputation is to create imputed values that are as close as possible to observed values. Figure 2 is the kernel density estimates (KDE) for the marginal distribution of the imputed (red) and the observed (blue) values. Kernel density estimation is calculated by weighting the distance of the data points. The plot shows that the distributions of the imputed and observed values are quite close especially among itmes on a likert scale. I created this and many other related KDE plots (see the R markdown file) for the diagonostic test using the `densityplot() function` from the `mice package`. 
 
 **Figure 2. The KDE for the Marginal Distribution of the Imputed (Red) and the Observed (Blue) Values**
@@ -134,6 +140,8 @@ q5_7_l      0.02228526 0.04290861 0.5193656  5.154995 6.250292e-01
 ```
 
 - I extracted the first imputed data and saved it as "imputed.csv" in the processed_data subdirectory.
+
+
 
 
 ### 03_Factor Analysis [[03_factor_analysis.Rmd](https://github.com/jaeyk/measuring-racial-lived-experience/blob/master/code/03_factor_analysis.Rmd)] 
@@ -202,15 +210,15 @@ factor_df <- data.frame(Measures = rownames(factor_frame),
 
 ```
 
-Next, I visualized the relationship between factor loadings and three items.
+Next, I visualized the relationship between factor loadings and three factors (see Figure 5). 
 
 ![](<https://github.com/jaeyk/measuring-racial-lived-experience/blob/master/outputs/factor_analysis.png>)
-
-Next, I visualized the relationship between factor loadings and three factors (see Figure 5). 
 
 Finally, I created three index variables based on questions relaed to each factor and then displayed how three dimensions of racial lived experience vary across racial groups.   
 
 **Figure 5. Three Dimensions of Racial Lived Experience Vary across Racial Groups**
 ![](<https://github.com/jaeyk/measuring-racial-lived-experience/blob/master/outputs/factor_analysis_by_race.png>)
+
+
 
 ## Conclusions
