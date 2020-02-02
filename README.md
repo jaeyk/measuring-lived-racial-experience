@@ -159,16 +159,6 @@ vars <- vars %>%
 **Figure 3. Parallel Analysis Result**
 ![](<https://github.com/jaeyk/measuring-lived-racial-experience/blob/master/outputs/scree_plot.png>)
 
-```{R}
-
-# Factor analysis 
-factor_analysis <- fa(vars, 
-                  nfactors = 3, # three factors  
-                  rotate = 'varimax', 
-                  fm = 'ml') # ML estimation 
-
-```
-
 After validating the `nfactors = 3` assumption, I ran the factor analysis using the observed data. I assume that these factors are orthogonal by setting the `rotate  = ‘oblimin’.` For interpretation, this means the factors show the correlations between question items and factors (for more information, see this [link](https://psu-psychology.github.io/psy-597-SEM/06_factor_models/factor_models.html#looking-under-the-hood-of-the-fa-model)). 
 
 ```{r}
@@ -176,12 +166,10 @@ After validating the `nfactors = 3` assumption, I ran the factor analysis using 
 # Factor analysis 
 factor_analysis <- fa(vars, 
                   nfactors = 3, # three factors  
-                  rotate = 'varimax', 
+                  rotate = 'oblimin', 
                   fm = 'ml') # ML estimation
 
 ```
-
-**Figure 4. Factor Analysis Result**
 
 In this section, the goal is to show how I visualized the relationship between each question item and three factors. I did this in two steps. I first extracted factor loadings ([correlation coefficients between observed variables and latent common factors](https://methods.sagepub.com/reference/encyc-of-research-design/n149.xml)) and then put them into a dataframe. 
 
@@ -202,6 +190,7 @@ factor_df <- data.frame(Measures = rownames(factor_frame),
 
 Next, I visualized the relationship between factor loadings and the three factors (see Figure 4). 
 
+**Figure 4. Factor Analysis Result**
 ![](<https://github.com/jaeyk/measuring-lived-racial-experience/blob/master/outputs/factor_analysis.png>)
 
 Finally, I created three index variables based on questions related to each factor and then displayed how the three dimensions of lived racial experience vary across racial groups (see Figure 5).   
