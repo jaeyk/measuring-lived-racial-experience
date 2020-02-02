@@ -52,14 +52,13 @@ cleaned <- read.csv("/home/jae/analyzing-racial-lived-experience/processed_data/
 
 ## 2. Examining missing responses
 
-- Unless we completely missed responses/observations/values by random, or missing completely at random (MCAR), the missing values are related to the data. Under this condition, if researchers ignore missing values using listwise deletion (e.g., `na.rm = TRUE`), especially when the percentage of missing values is large, this practice causes biased estimators. 
+- Listwise deletion (`na.rm = TRUE`) works only if these observations are missing completely at random (MCAR). This is a strong assumption, as it happens very rarely. 
 
 ### 2.1. Exploratory analysis (data visualization)
 
-To examine the nature of missigness in the data, let's first take a look at how many missing values exist and where we can find them. The bar plot shows the degree of missingness faceted by racial groups. I did that because we believe race is a key moderating variable.
-
-- `q10_2b` education is seriously missing (>75%) for whites, blacks, and multiracial Americans but not for Asian American Pacific Islanders (AAPI) and Latinos. 
-- More or less 50% missingness exist among everyday challenged related variables (starts with `q5_7`) for all racial groups.
+- The `nanair package` provides many useful functions for inspecting missing data values. I used the `miss_var_summary() function` from this package to inspect the missing pattern and visualized it using ggplot2. 
+- `q10_2b` education is seriously missing observations (>75%) for whites, blacks, and multiracial Americans but not for Asian American Pacific Islanders (AAPI) and Latinos. 
+- More or less 50% missingness exist among everyday challenged related variables (starts with `q5_7`) across all racial groups.
 
 ```{r}
 
@@ -80,7 +79,7 @@ ggsave("/home/jae/analyzing-racial-lived-experience/outputs/missing_rate.png", h
 
 ### 2.2. Little's Test 
 
-Now, let's formally test whether the data misses values by random. Here, I used [Roderik J. A. Little's global test for MCAR](https://www.tandfonline.com/doi/abs/10.1080/01621459.1988.10478722?casa_token=xXGRTDzkeB4AAAAA:Ji89bNk4Sh9VXEoEJrEl89Iv3JrH2s0onf4gfOz4TEb1rB9DAkVJUyVc7eU9LDYVuhIaxkBZ9uQS) which he published in the Journal of Statistical Association in 1988. The null hypothesis is the data is MCAR. The test result shows that p-value is 0.7325409 and, thus, we can safely assume that the probability of rejecting the null hypothesis (not MCAR) is extremely low.
+Now, let's formally test whether the data misses values by random. Here, I used [Roderik J. A. Little's global test for MCAR](https://www.tandfonline.com/doi/abs/10.1080/01621459.1988.10478722?casa_token=xXGRTDzkeB4AAAAA:Ji89bNk4Sh9VXEoEJrEl89Iv3JrH2s0onf4gfOz4TEb1rB9DAkVJUyVc7eU9LDYVuhIaxkBZ9uQS). The null hypothesis is the data is MCAR. The test result shows that the chance for MCAR is extreme (low p-value). Therefore, listwise deletion is discouraged as an option. 
 
 ```{r eval=FALSE, include=FALSE}
 
@@ -94,11 +93,11 @@ little_test_result$p.value
 
 ## 3. Multiple imputation 
 
-One solution to missing values is to impute them based one the observed data. Here, the key insight is shifting analytic focus from estimating the best imputed value to creating multiple imputed data using simulations. Researchers then select a model that best fits the missed to the observed components of the data ([Rubin 1976](https://journals.sagepub.com/doi/pdf/10.3102/10769986002001001?casa_token=VmQAcENEd1oAAAAA:izsSioksnO9anDaSrhyDRQzi78E4tMvY_84xinVx6N1vayowbmsyBtgEU4iS-sMnf07F5ixyFbam). This is a better strategy to deal with uncertainty surrounding the model selection.
+In this case, I took a multiple imputation approach. Basically, I recovered (imputed) missing values based on the observed data. I did so by making simulations of these imputed values in order to garner some measures of their uncertainty.
 
 ### 3.1. Imputing data 
 
-In this project, I used the `mice package` in R for multiple implication, which was developed by [Stef van Buuren](https://stefvanbuuren.name/). His book titled [Flexible Imputation of Missing Data](https://stefvanbuuren.name/fimd/) is a great resource for conducting imputation in R. Using the `mice function ()` from the package, I created five imputed data. [Applied Missing Data Analaysis with SPSS and (R)Studio](https://bookdown.org/mwheymans/bookmi/) (Heymans and Eekhout 2019) is another great resource.
+In this project, I used the `mice package` developed by [Stef van Buuren](https://stefvanbuuren.name/).  The following code shows how the imputation model is set up. I comment on each argument to make it explicit how the model is set up. For instance, the `m argument` refers to the number of imputations, and I set it to `5`.
 
 ```{r}
 
@@ -115,9 +114,7 @@ imp <- mice(cleaned,
 
 #### 3.2.1. Data visualization 
 
-To evaluate imputations, I first measured the discrepancy between the distribution of imputed and that of observed values. If we assume missing at random (MAR, not completely random but still can be explained by certain variables), these distributions [do not need to be identicial](https://stefvanbuuren.name/fimd/sec-diagnostics.html), but they still should look similar.
-
-I used the `densityplot() function` from the `mice package` to display the kernel density estimates for the marginal distribution of the imputed (`red`) and observed values (`blue`). Kernel density estimation is calculated by weighting the distances of the data points. The plots show that the distributions of the imputed and observed values are quite close especially among itmes on a likert scale. 
+The goal of imputation is to create imputed values that are as close as possible to observed values. I used the `densityplot() function` from the `mice package` to display the kernel density estimates (KDE) for the marginal distribution of the imputed (red) and the observed (blue) values. Kernel density estimation is calculated by weighting the distance of the data points. The plot shows that the distributions of the imputed and observed values are quite close, especially among items on a Likert scale. 
 
 
 ```{r}
@@ -128,7 +125,7 @@ densityplot(imp, layout = c(1, 3))
 
 #### 3.2.2. Rubin's rule test 
 
-Another critical test is whether model fit changes depending on which imputed data we select. To examine this, I built a simple regression model, which is based on the idea that survey questions on everyday challenge should be strongly linearly associated. In addition, this case is nice as we found many missing values in these variables in the earlier exploratory analysis. I did Rubin's rule test using the `pool() function` from the `mice package`. The test "averages the estimates of the complete model" and "computes the total variance over the repeated analyse" (for more information, see [this function documentation](https://rdrr.io/cran/mice/man/pool.html)). The summary test result shows that the p-values for the regression coefficients are extremely small. Selecting one model over the other does make little difference for the model fit (=little within imputation variance). Rubin's rule test assumes that the distribution of the data follows a normal distribution. I checked this assumption using Shapiro-Wilk test. 
+Another critical test is deciding whether selecting one imputed piece of data over another is consequential. The `complete() function` pools the imputed data, but a question remains about which one should be selected. In this project, I created five imputed datasets. I built a simple regression model that examines associations between survey items related to the everyday challenge component of racial experience. The `pool() function` from the `mice package` is Donald Rubin’s rule test. The test “averages the estimates of the complete model” and “computes the total variance over the repeated analysis” (for more information, see [this function documentation](https://rdrr.io/cran/mice/man/pool.html)). The summary test result shows that the p-values for the regression coefficients are extremely small. Selecting one model over the other makes little difference for the model fit (=little within imputation variance). Rubin’s rule test assumes that the distribution of the data follows a normal distribution. I checked this assumption using the Shapiro-Wilk test.   
 
 ```{r}
 

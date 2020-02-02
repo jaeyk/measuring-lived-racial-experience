@@ -27,10 +27,9 @@ pacman::p_load(
 
 ```
 
-## 1. Importing files 
+    ## 1. Importing files 
 
-- I used the "National Asian American Survey (NAAS) 2016 Post-Election Survey" designed and collected by Karthick Ramakrishnan, Jennifer Lee, Taeku Lee, and Janelle Wong. The original data was accessible at: http://naasurvey.com/data/. The data I used in this project is the weighted version.
-- The data has 406 variables (the number of columns) and 6,448 observations (the number of rows for each column). Also, please note that the outcome of the `table() function` which shows that every survey participant participated the full survey. 
+- The data has 406 variables (the number of columns) and 6,448 observations (the number of rows for each column). Also, please note that the result of the `table() function` which shows that every survey participant participated the full survey. 
 
 ```{r}
 
@@ -46,7 +45,7 @@ table(data$fullsurvey)
 
 ## 2. Selecting variables 
 
-We didn't need every variable for the data analysis. Let's select the only ones that we will use in the analysis. This way we can save the memory by reducing the number of variables from 406 to 40. In doing so, it's also important to comment on variables to not miss or confuse between them. Of 43 variables, it appears only 1 variable is integer, 1 variable is character, and the rest of them are factors.
+We do not need every variable in the data for the data analysis. Let's select the only ones that we will use. By doing so, I saved the memory by reducing the number of variables in the data from 406 to 40. It's also important to comment on these selected variables. As you can see below, most questions are named based on the order in which they appeared in the questionnaire. This is not especially informative, and it means that you will likely have to go back and forth between the codebook and the survey data. Of 40 variables, it appears that only 1 variable is integer, 1 variable is character, and the rest of them are factors.
 
 ```{r}
 
@@ -138,11 +137,11 @@ apply(df, 2, unique)
 ```
 
 
-### 3.2. Capture only numeric elements of ordered survey responses (factors)
+### 3.2. Capture the first number group from ordered survey responses 
 
 ```{r}
 
-# Create a function for capturing the first numeric elemetn of survey responses 
+# Create a function for capturing the first number group from survey responses
 
 return_numeric <- function(x) {as.numeric(gsub("([0-9]+).*$", "\\1", x))} # regular expression
 
@@ -159,7 +158,7 @@ recoded$states <- df$s9a
 
 ### 3.3. Some variables better treated as factors 
 
-Some variables are better treated as factors because they are categorical variables (e.g., race). Also, please note that I collapsed the original 9 categories for race into a more simplified 7 categories. That way we have more statistical power, when we do subgroup analysis.
+Some variables are better treated as factors because they are categorical variables (e.g., race). 
 
 ```{r}
 
@@ -197,8 +196,6 @@ recoded$citizen <- as.factor(recoded$citizen)
 
 ### 3.4. Replace non-response values (`9`, `88`, `99`, `8888`, `9999`) with `NA`s
 
-Please note that replacing non-response values with NAs increased the percentage of missing values in the dataframe from 19% to 22%.
-
 ```{r}
 
 paste("What's the percentage of missing values in the data BEFORE replacing non-reponse values with NAs?:", mean(is.na(recoded)))
@@ -215,7 +212,7 @@ paste("What's the percentage of missing values in the data AFTER replacing non-r
 
 ### 3.5. Rescale responses 
 
-Rescale ordinal responses so that they are all on the same scale (0-1).
+Rescale ordinal responses on the same scale (0-1).
 
 ```{r}
 
@@ -228,7 +225,7 @@ rescaled <- recoded %>%
 
 ```
 
-Also, we want to pay careful attention to binary responses (`Yes` or `No`). It is important to turn them into dummy variables, such as `Yes` coded as `1`. `No` coded as `0`. This practice reduced confusions when interpreting the percentage of the agreements on certain question items among survey respondents.
+Turn binary response variables (`Yes` or `No`) into dummy variables (`Yes` =  `1`. `No` = `0`) 
 
 ```{r}
 
@@ -243,7 +240,7 @@ reverse_dummy <- function(data){
 
 ```
 
-When we inspected how values are coded using `the apply() function` we found that the questions start wiht `q4_5`, `q5_1`, and `q5_2` contain binary responses.
+While we inspected how values are coded in the data using `the apply() function`, we found that the questions start wiht `q4_5`, `q5_1`, and `q5_2` contain binary responses.
 
 ```{r}
 
@@ -282,7 +279,7 @@ scaled <- recoded %>%
 
 ```
 
-  ## 5. Save the cleaned file 
+## 4. Save the cleaned file 
 
 ```{r}
 

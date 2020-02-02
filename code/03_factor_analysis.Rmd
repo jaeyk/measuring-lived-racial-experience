@@ -50,7 +50,7 @@ imputed <- read.csv("/home/jae/analyzing-racial-lived-experience/processed_data/
 
 ## 2. Selecting variables 
 
-I first select variables that are related to the presumed three dimensions of racial experience (everyday challenge, micro-aggression and discrimination)
+- I selected the variables related to the multi-dimensions of lived racial experience from the survey. This time, I renamed these variable names using the `rename function()` from the `dplyr` package, as they will appear in the plots I will soon create.
 
 ```{r}
 
@@ -62,8 +62,6 @@ vars <- imputed %>%
                 q5_7_a, q5_7_b, q5_7_c, q5_7_d, q5_7_e, q5_7_f, q5_7_g, q5_7_h, q5_7_i, q5_7_j, q5_7_k, q5_7_l) # everyday challenge
 
 ```
-
-I then rename these variables to be more intelligible as they are going to appear in plots.
 
 ```{r}
 
@@ -107,8 +105,9 @@ vars <- vars %>%
 
 ### 3.1. Parallel analysis: How many factors?
 
-We assumed that there are three factors (latent or unobserved dimensions) of racial experience. Let's check this assumption. The `fa.parallel () function` from the `psych package` compares the eigenvalues of the correlation matrix ([the metric of variance explained]((https://sakaluk.wordpress.com/2016/05/26/11-make-it-pretty-scree-plots-and-parallel-analysis-using-psych-and-ggplot2/))) from the observed data with the eigenvalues generated from random data. The Y-axis indicates eignevalues and the X-indicates the number of possible factors from 1 to the maximum. You can easily see that after three factors, the Y value drops immediately. I set the `fm argument` in the `fa.parallel () function` to 'ml` (maximum likelihood estimation) to use common factor model, which assumes that covariance between items are explained by both "shared latent causes" as well as "unexplained variable-specific variance" (for more inforation, see this [link](https://psu-psychology.github.io/psy-597-SEM/06_factor_models/factor_models.html)). The result (again, an abrupt change in the slope) shows that assuming three factors is plausible.
-
+- We assumed assumed that there are three dimensions of lived racial experience. We do not observe these constructs from the survey data. What we have instead is a battery of survey items that might hang together and map onto the assumed conceptual framework. We can examine this pattern by calculating the covariance between survey items of interest. Factor analysis, by definition, is one way to perform this task, because factors are latent/unobserved/low dimensions in data. 
+- Let’s first check whether the assumption about the number of factors is valid. The `fa.parallel` function from the `psyche package` compares the eigenvalues of the correlation matrix ([the metric of variance explained]((https://sakaluk.wordpress.com/2016/05/26/11-make-it-pretty-scree-plots-and-parallel-analysis-using-psych-and-ggplot2/))) from the observed data with the eigenvalues generated from random data. In Figure 3, the Y-axis indicates eigenvalues and the X-indicates the number of possible factors from 1 to the maximum. Here, you can easily see that after three factors, the Y value drops immediately. 
+- I set the `fm argument` in the `fa.parallel` function to “ml” (maximum likelihood estimation) to use the common factor model, which assumes that covariance between items is explained by both “shared latent causes” and “unexplained variable-specific variance” (for more information, see this [link](https://psu-psychology.github.io/psy-597-SEM/06_factor_models/factor_models.html)). The result (again, an abrupt change in the slope) shows that assuming three factors is plausible.
 
 ```{r}
 
@@ -123,7 +122,7 @@ psych::fa.parallel(vars,
 
 ### 3.2. Factor analysis 
 
-After validating the `nfactors = 3` assumption, I ran the factor analysis using the observed data. I assume that these factors are orthogonal by setting the `rotate  = 'oblimin'.`For interpretation, it means the factors show the correlations between question items and factors (for more information, see this [link](https://psu-psychology.github.io/psy-597-SEM/06_factor_models/factor_models.html#looking-under-the-hood-of-the-fa-model)). 
+- After validating the `nfactors = 3` assumption, I ran the factor analysis using the observed data. I assume that these factors are orthogonal by setting the `rotate  = ‘oblimin’.` For interpretation, this means the factors show the correlations between question items and factors (for more information, see this [link](https://psu-psychology.github.io/psy-597-SEM/06_factor_models/factor_models.html#looking-under-the-hood-of-the-fa-model)). 
 
 ```{r}
 
@@ -135,11 +134,12 @@ factor_analysis <- fa(vars,
 
 # Summary 
 summary(factor_analysis)
+
 ```
 
 ### 3.3. Data visualization
 
-Here, the goal is to visualize the relationship between each question item and three factors. I did in two steps. I first extracted factor loadings ([correlation coefficients between observed variables and latent common factors](https://methods.sagepub.com/reference/encyc-of-research-design/n149.xml)) and then put them into a dataframe. 
+Here, the goal is to show how I visualized the relationship between each question item and three factors. I did this in two steps. I first extracted factor loadings (correlation coefficients between observed data and factors) and then put them into a dataframe. 
 
 ```{r}
 
@@ -156,7 +156,7 @@ factor_df <- data.frame(Measures = rownames(factor_frame),
 
 ```
 
-Next, I visualized the relationship between factor loadings and three factors.
+Next, I visualized the relationship between factor loadings and the three factors.
 
 ```{r}
 
@@ -180,7 +180,7 @@ ggsave("/home/jae/analyzing-racial-lived-experience/outputs/factor_analysis.png"
 
 ## 4. Creating index variables 
 
-We are also interested to see how scores for these factors vary across racial groups. For example, it is curious to know whether the level of marginality varies across racial groups depending on which measure we use. I created index variables by calculating the mean of survey items related to each factor. I dropped the `name_mispronounced` variable in doing this, as its factor loading is quite low.
+I created index variables by calculating the mean of survey items related to each factor. I dropped the `name_mispronounced` variable in doing this because its factor loading is extremely low.
 
 ```{r}
 
@@ -204,9 +204,9 @@ everyday_challenge <- imputed %>%
 
 ```
 
-## 5. Replacing the survey questions with the new columns 
+## 5. Replacing the survey items with the index variables. 
 
-I then replaced the survey questions related to racial experience with the new variables that represent three factors.
+I then replaced the survey items related to lived racial experience with the three index variables.
 
 ```{r}
 
@@ -229,7 +229,7 @@ colnames(factored)[15:17] <- c("micro_aggression", "discrimination", "everyday_c
 
 ## 6. Data visualization 
 
-Finally, I visualize the relationship between the mean of these index variables (the degree of agreements) and race. 
+Finally, I visualize the relationship between the mean of these index variables and race. 
 
 ```{r}
 
@@ -248,7 +248,7 @@ factored %>%
     theme_fivethirtyeight() +
     coord_flip() +
     labs(y= "Average score of survey responses", x = "Race",
-         title = "Subgroup Descriptive Analysis",
+         title = "Subgroup Descriptive Analysis Results",
          caption = "National Asian American Suvrey (2016)") +
     facet_wrap(~racial_experience)
 
