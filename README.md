@@ -113,12 +113,12 @@ imp <- mice(scaled,
 - The goal of imputation is to create imputed values that are as close as possible to observed values. Figure 2 is the kernel density estimates (KDE) for the marginal distribution of the imputed (red) and the observed (blue) values. Please note that kernel density estimation is calculated by weighting the distance of the data points. The plot shows that the distributions of the imputed and observed values are quite close especially among itmes on a likert scale. I created this and many other related KDE plots (see the R markdown file) using the `densityplot() function` from the `mice package`. 
 
 **Figure 2. The KDE for the Marginal Distribution of the Imputed (Red) and the Observed (Blue) Values**
-![](<https://github.com/jaeyk/measuring-racial-lived-experience/blob/master/outputs/missing_rate.png>)
+![](<https://github.com/jaeyk/measuring-racial-lived-experience/blob/master/outputs/imputed_density_plot.png>)
 
 - Another important task is to decide whether selecting one imputed data over the other is consequential. The `complete() function` pools the imputed data, but a question remains about which one we select. In this project, I created five imputed data. I built a simple regression model that examines associations between survey items related to the everday challenge component of racial experience. The `pool() function` from the `mice package` is Donald Rubin's rule test. The test "averages the estimates of the complete model" and "computes the total variance over the repeated analyse" (for more information, see [this function documentation](https://rdrr.io/cran/mice/man/pool.html)). The summary test result shows that the p-values for the regression coefficients are extremely small. Selecting one model over the other does make little difference for the model fit (=little within imputation variance). Rubin's rule test assumes that the distribution of the data follows a normal distribution. I checked this assumption using Shapiro-Wilk test.   
 
 ```
-          estimate  std.error statistic        df      p.value
+         	estimate   std.error  statistic        df      p.value
 (Intercept) 0.06683443 0.01040490 6.4233596 23.693785 1.290565e-06
 q5_7_b      0.01727157 0.04561810 0.3786122  4.819998 7.210765e-01
 q5_7_c      0.06984457 0.03957057 1.7650637  5.090141 1.367832e-01
@@ -139,7 +139,32 @@ q5_7_l      0.02228526 0.04290861 0.5193656  5.154995 6.250292e-01
 ### 03_Factor Analysis [[03_factor_analysis.Rmd](https://github.com/jaeyk/measuring-racial-lived-experience/blob/master/code/03_factor_analysis.Rmd)] 
 
 
+- I selected the variables related to the multi-dimensions of racial lived experience from the survey. This time, I renamed these variable names using the `rename function()` from the `dplyr` package as they will appear in the plots I will create soon.
 
+```{R}
+# Renaming these variables 
 
+vars <- vars %>%
+  rename(# micro-agression
+         service_unfriendly = q5_1_b,
+         english_proficiency = q5_1_c,
+         afraid_of_you = q5_1_d,
+         thought_dishonest = q5_1_e,
+         insulted = q5_1_g,
+         threatened = q5_1_h,
+         name_mispronounced = q5_1_i,
+```
+
+- Taeku and I assumed that there are three dimensions of racial lived experience. We do not observe these constructs from the observations. What we have is a battery of survey questions. What we argue is, essentially, these survey questions have three latent (or unobserved) dimensions, which can be examined by how these survey questions hang together. Factor analysis, by definition, is one way to accomplish this task. Factors are latent dimensions in the data. 
+- Let's first check whether the assumption about the number of factors is valid. 
+
+**Figure 3. Parallel Analysis Result**
+![](<https://github.com/jaeyk/measuring-racial-lived-experience/blob/master/outputs/imputed_density_plot.png>)
+
+**Figure 4. Factor Analysis Result**
+![](<https://github.com/jaeyk/measuring-racial-lived-experience/blob/master/outputs/factor_analysis.png>)
+
+**Figure 5. Three Dimensions of Racial Lived Experience and How They Vary across Racial Groups**
+![](<https://github.com/jaeyk/measuring-racial-lived-experience/blob/master/outputs/factor_analysis_by_race.png>)
 
 ## Conclusions
