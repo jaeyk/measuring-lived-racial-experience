@@ -15,12 +15,12 @@
 
 ## Workflow
 
-In this section, I document how I preprocessed and analyzed the 2016 National Asian American Survey (NAAS) data step-by-step. I also provide the R code used in each step. Please note that `.Rmd` extension indicates an `R markdown file`. 
+In this section, I document how I preprocessed and analyzed the 2016 National Asian American Survey (NAAS) data step-by-step. I also provide the R code used in each step. `.Rmd` extension indicates an `R markdown file`. 
 
 
 ### 01_Cleaning Data [[01_data_cleaning.Rmd](https://github.com/jaeyk/measuring-racial-lived-experience/blob/master/code/01_data_cleaning.Rmd)] 
 
-- **Tidying:** Please note that I assume that your survey data is saved in [a tidy format](https://cran.r-project.org/web/packages/tidyr/vignettes/tidy-data.html). The NAAS is. Variables are columns and rows are observations. If not, turn your data into a tidy format. The `tidyr` package provides many useful tools to do this easily.  
+- **Tidying:** I assume that your survey data is saved in [a tidy format](https://cran.r-project.org/web/packages/tidyr/vignettes/tidy-data.html). The NAAS is. Variables are columns and rows are observations. If not, turn your data into a tidy format. The `tidyr` package provides many useful tools to do this easily.  
 - **Columns:** The first thing to do is to select columns or variables that you want to use for the analysis. In case of the NASS data, the original data has 406 variables. Yet, I did not need most of them. Most of the survey data, specially large ones, fall into this category. These survey are expensive to collect and, thus, try to be useful to a large number of and diverse users. The result of lots of questions that may have nothing to do with your particular research. Don't allow these variables take up your precious memory. 
 - In addition, when selecting columns, it is useful to comment what they are about. As you can see below, most questions are named in a survey, following the order in which they appeard in the questionnaire. They are not informative. You are likely to go back and forth between the codebook and the survey data. Save these extra steps by commenting. 
 
@@ -91,13 +91,13 @@ reverse_dummy <- function(data){
 
 - Even if a survey data is collected by probability sampling (a sampling method that involves random selection), it does not imply that the data is representative (=sampling estimates are unbiased estimators of population parameters). The survey might have failed to recruit survey respodnents as they planned. Then, we we may need to weight data. Also, these respondents might have missed or not responded all stated questions. Then, we may need imputate data. This missing data problem arises because data collection process is not entirely under the control of the people who designed and implemented a survey. Missing data is bound to occur and we should pay attention to them, especially whether the pattern of their occurance is random or systematic. 
 - Usuaully, big surveys provide their weights. From the user end, a more frequent problem is imputation: missing responses for questions of interest. 
-- An easy solution is to use listwise delection (`na.rm = TRUE`) or just ignoring these observations. This works only if these observations are missing completely at random (MCAR). This is a strong assuimption as it happens very rarely. The `nanair package` provides many useful functions to inspect missing values in data. I used the `miss_var_summary() function` from this pacakge to inspect the missing pattern and visualize it using ggplot2. The bar plot (Figure 1) shows that missing values are concentrated in particular variables and, thus, the missing pattern is unlikley to be MCAR. Please note that in the plot AAPI stands for Asian American Pacific Islanders. These group categories are self-identified. I also conducted Little's test, a global test for MCAR and it confirms that the chance for MCAR is extreme (low p-value). Therefore, listwise delection is discouraged as an option. 
+- An easy solution is to use listwise delection (`na.rm = TRUE`) or just ignoring these observations. This works only if these observations are missing completely at random (MCAR). This is a strong assuimption as it happens very rarely. The `nanair package` provides many useful functions to inspect missing values in data. I used the `miss_var_summary() function` from this pacakge to inspect the missing pattern and visualize it using ggplot2. The bar plot (Figure 1) shows that missing values are concentrated in particular variables and, thus, the missing pattern is unlikley to be MCAR. In the plot, AAPI stands for Asian American Pacific Islanders. These group categories are self-identified. I also conducted Little's test, a global test for MCAR and it confirms that the chance for MCAR is extreme (low p-value). Therefore, listwise delection is discouraged as an option. 
 
 **Figure 1. Missing Pattern in the NAAS Data**
 ![](<https://github.com/jaeyk/measuring-racial-lived-experience/blob/master/outputs/missing_rate.png>)
 
 - I took multiple imputation approach. Basically, I recover (impute) missing values based on the observed data. I do so by making simulations of these imputed values to have some measures of their uncertainty. This method is pioneered by [Donald Rubin](https://statistics.fas.harvard.edu/people/donald-b-rubin) in the 1970s and many packages in R helps to implement this method pretty easily. 
-- In this project, I used the `mice package` developed by [Stef van Buuren](https://stefvanbuuren.name/).  The following code shows how the imputation model is set up. Note that I comment on each argument to make how the model is set up explicit. For instance, the `m argument` is for the number of imputations and I set it to `5`. That way I do not need to go back to the package documentation to recall what each argument is for. Also, readers can easily comprehend how I approach the imputation problem. More commenting and incresaing transparency creates a win-win situation.
+- In this project, I used the `mice package` developed by [Stef van Buuren](https://stefvanbuuren.name/).  The following code shows how the imputation model is set up. I comment on each argument to make how the model is set up explicit. For instance, the `m argument` is for the number of imputations and I set it to `5`. That way I do not need to go back to the package documentation to recall what each argument is for. Also, readers can easily comprehend how I approach the imputation problem. More commenting and incresaing transparency creates a win-win situation.
 
 ```{r}
 
@@ -110,7 +110,7 @@ imp <- mice(scaled,
 
 ```
  
-- The goal of imputation is to create imputed values that are as close as possible to observed values. Figure 2 is the kernel density estimates (KDE) for the marginal distribution of the imputed (red) and the observed (blue) values. Please note that kernel density estimation is calculated by weighting the distance of the data points. The plot shows that the distributions of the imputed and observed values are quite close especially among itmes on a likert scale. I created this and many other related KDE plots (see the R markdown file) for the diagonostic test using the `densityplot() function` from the `mice package`. 
+- The goal of imputation is to create imputed values that are as close as possible to observed values. Figure 2 is the kernel density estimates (KDE) for the marginal distribution of the imputed (red) and the observed (blue) values. Kernel density estimation is calculated by weighting the distance of the data points. The plot shows that the distributions of the imputed and observed values are quite close especially among itmes on a likert scale. I created this and many other related KDE plots (see the R markdown file) for the diagonostic test using the `densityplot() function` from the `mice package`. 
 
 **Figure 2. The KDE for the Marginal Distribution of the Imputed (Red) and the Observed (Blue) Values**
 ![](<https://github.com/jaeyk/measuring-racial-lived-experience/blob/master/outputs/imputed_density_plot.png>)
@@ -155,16 +155,62 @@ vars <- vars %>%
          name_mispronounced = q5_1_i,
 ```
 
-- Taeku and I assumed that there are three dimensions of racial lived experience. We do not observe these constructs from the observations. What we have is a battery of survey questions. What we argue is, essentially, these survey questions have three latent (or unobserved) dimensions, which can be examined by how these survey questions hang together. Factor analysis, by definition, is one way to accomplish this task because factors are latent dimensions in data. 
-- Let's first check whether the assumption about the number of factors is valid. 
+- Taeku and I assumed that there are three dimensions of racial lived experience. We do not observe these constructs from the survey data. What we have is instead a battery of survey items that might hang together and map into the assumed conceptual framework. We can examine this pattern by calculating the covariance between survey items of interest. Factor analysis, by definition, is one way to perform this task because factors are latent/unobserved/low dimensions in data. 
+- Let's first check whether the assumption about the number of factors is valid. The `fa.parallel` function from the `psyche package` compares the eigenvalues of the correlation matrix ([the metric of variance explained]((https://sakaluk.wordpress.com/2016/05/26/11-make-it-pretty-scree-plots-and-parallel-analysis-using-psych-and-ggplot2/))) from the observed data with the eigenvalues generated from random data. In Figure 3, the Y-axis indicates eignevalues and the X-indicates the number of possible factors from 1 to the maximum. Here, you can easily see that after three factors, the Y value drops immediately. 
+- I set the `fm argument` in the `fa.parallel` function to "ml" (maximum likelihood estimation) to use common factor model, which assumes that covariance between items are explained by both "shared latent causes" as well as "unexplained variable-specific variance" (for more inforation, see this [link](https://psu-psychology.github.io/psy-597-SEM/06_factor_models/factor_models.html)). The result (again, an abrupt change in the slope) shows that assuming three factors is plausible.  
 
 **Figure 3. Parallel Analysis Result**
 ![](<https://github.com/jaeyk/measuring-racial-lived-experience/blob/master/outputs/scree_plot.png>)
 
+
+```{R}
+# Factor analysis 
+factor_analysis <- fa(vars, 
+                  nfactors = 3, # three factors  
+                  rotate = 'varimax', 
+                  fm = 'ml') # ML estimation 
+```
+
+After validating the `nfactors = 3` assumption, I ran the factor analysis using the observed data. I assume that these factors are orthogonal by setting the `rotate  = 'oblimin'.`For interpretation, it means the factors show the correlations between question items and factors (for more information, see this [link](https://psu-psychology.github.io/psy-597-SEM/06_factor_models/factor_models.html#looking-under-the-hood-of-the-fa-model)). 
+
+```{r}
+
+# Factor analysis 
+factor_analysis <- fa(vars, 
+                  nfactors = 3, # three factors  
+                  rotate = 'varimax', 
+                  fm = 'ml') # ML estimation
+
+```
+
 **Figure 4. Factor Analysis Result**
+
+In this section, the goal is to show how I visualized the relationship between each question item and three factors. I did in two steps. I first extracted factor loadings ([correlation coefficients between observed variables and latent common factors](https://methods.sagepub.com/reference/encyc-of-research-design/n149.xml)) and then put them into a dataframe. 
+
+```{R}
+
+# Extract factor loadings 
+factor_frame <- factor_analysis$loadings %>%
+                 unclass() %>%
+                 as.data.frame()
+
+# Putting them into a data frame
+factor_df <- data.frame(Measures = rownames(factor_frame), 
+              everyday_challenge = factor_frame$ML1,
+              micro_aggression = factor_frame$ML2,
+              discrimination = factor_frame$ML3)
+
+```
+
+Next, I visualized the relationship between factor loadings and three items.
+
 ![](<https://github.com/jaeyk/measuring-racial-lived-experience/blob/master/outputs/factor_analysis.png>)
 
-**Figure 5. Three Dimensions of Racial Lived Experience and How They Vary across Racial Groups**
+Next, I visualized the relationship between factor loadings and three factors (see Figure 5). 
+
+Finally, I created three index variables based on questions relaed to each factor and then displayed how three dimensions of racial lived experience vary across racial groups.   
+
+**Figure 5. Three Dimensions of Racial Lived Experience Vary across Racial Groups**
 ![](<https://github.com/jaeyk/measuring-racial-lived-experience/blob/master/outputs/factor_analysis_by_race.png>)
 
 ## Conclusions
