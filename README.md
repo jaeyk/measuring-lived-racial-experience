@@ -1,20 +1,13 @@
 # Measuring Racial Lived Experience
 **Systematically Measuring the Multi-dimensions of Racial Lived Experience**
 
-
-
 - The goal of this article is to document **how I cleaned, imputed, and ran a factor analysis on a large-scale survey data** (2016 National Asian American Survey) to measure the multi-dimensions of racial lived experience. This is part of the research which I have conducted with my advisor [Taeku Lee](https://www.law.berkeley.edu/our-faculty/faculty-profiles/taeku-lee/) (UC Berkeley) for the past two years (2018-2020). 
-
-  ​
-
 
 
 ## Motivation 
 
 - My focus is **Not Substantial**. I do not intend to discuss why we view racial lived experience as a multidimensional concept and why we measure it using particular questions used in this particular survey. That discussion goes far beyond the scope of this document and will be included in the paper based on this project. 
 - The main focus is **Practical**. Survey data is the bread and butter of opinion/behavioral research. However, most of the survey data is not saved in a format that is suitable for statistical analysis. Therefore, researchers and practitioners spend numerous hours to clean the data. Over the past few years, I realized that cleaning survey data has patterns. I want to share some of my tricks to exploit these patterns as they can be helpful for researchers and practitioners. In the near future, I plan to develop an R package that helps preprocessing survey data. For that reason, please feel free to create issues on the Git repository when you have difficulties applying my code to your project.
-
-
 
 
 ## Workflow
@@ -91,7 +84,6 @@ reverse_dummy <- function(data){
 
 - When the cleaning process is done, save the file as "01_cleaned.csv" in the `processed_data` subdirectory within your project director. Separate your raw data from processed data and your code from your output. In general, input, process (computation), and output should be separated from each other. When you work with other people or need to share your project with someone else, this little structure helps them a lot to navigate many files you created. Don't underestimate the number of files you end up creating. The longer you work on the project, the more files you will produce. Sort them earlier rather than later. Also, don't forget naming files in an informative way (numbering plus for the research stage that is complete).
 
-  ​
 
 ### 02_Imputing Data [[02_imputation.Rmd](https://github.com/jaeyk/measuring-racial-lived-experience/blob/master/code/02_imputation.Rmd)]
 
@@ -142,10 +134,7 @@ q5_7_l      0.02228526 0.04290861 0.5193656  5.154995 6.250292e-01
 - I extracted the first imputed data and saved it as "imputed.csv" in the processed_data subdirectory.
 
 
-
-
 ### 03_Factor Analysis [[03_factor_analysis.Rmd](https://github.com/jaeyk/measuring-racial-lived-experience/blob/master/code/03_factor_analysis.Rmd)] 
-
 
 - I selected the variables related to the multi-dimensions of racial lived experience from the survey. This time, I renamed these variable names using the `rename function()` from the `dplyr` package as they will appear in the plots I will create soon.
 
@@ -170,13 +159,14 @@ vars <- vars %>%
 **Figure 3. Parallel Analysis Result**
 ![](<https://github.com/jaeyk/measuring-racial-lived-experience/blob/master/outputs/scree_plot.png>)
 
-
 ```{R}
+
 # Factor analysis 
 factor_analysis <- fa(vars, 
                   nfactors = 3, # three factors  
                   rotate = 'varimax', 
                   fm = 'ml') # ML estimation 
+
 ```
 
 After validating the `nfactors = 3` assumption, I ran the factor analysis using the observed data. I assume that these factors are orthogonal by setting the `rotate  = 'oblimin'.`For interpretation, it means the factors show the correlations between question items and factors (for more information, see this [link](https://psu-psychology.github.io/psy-597-SEM/06_factor_models/factor_models.html#looking-under-the-hood-of-the-fa-model)). 
@@ -220,5 +210,6 @@ Finally, I created three index variables based on questions related to each fact
 ![](<https://github.com/jaeyk/measuring-racial-lived-experience/blob/master/outputs/factor_analysis_by_race.png>)
 
 
-
 ## Conclusions
+1. Let's not try to be the smartest person in the room. I am a data science fellow and a consultant for [the Data-intensive Social Scineces Lab](https://dlab.berkeley.edu/) (D-Lab) at UC Berkeley. We have a nice motto, which I fully embrace in my life and work: IOKN2K (It's Okay Not to Know). Doing a data analysis is hard because there are so many ways it can go wrong. Factor analyis sounds simple. However, as you can see, getting there takes so many steps that involve many complex decisions. We can do this job well by documenting, reviewing, and improving workflow. We can do this even better by sharing this documentation with others and receiving and incorporating their feedback. Despite obvious benefits, this is hard to do in practice because we do not want to be seen as less competent than our peers. To change the mindset, we need to understand that learning happens through incremental steps. Failures are bound to happen in the process. Some are systematic and others random. We should not be distracted by noises, avoid socially inherited biases, and strive to learn from our own systematic mistakes. Documentation makes this process easier by making the assumptions we made in each step as clear as possible. Experience does not provide us expertise, but experience with reflection does.
+2. In addition, for R statistical packges, I think that it would be nice, if they have some printed messages for changing model parameters. In particular, it would be useful, if these pacakges could inform users regarding the limitations of default setups and the correct ways to interpret model outcomes. Most R statistical packages assume that users have strong knowledge of the functions they are using and the documentation they provided is sufficient. I believe that in most cases this assumption is unwarranted. As R gains more popularity, R users become more diverse in technical backgrounds. Therefore, nudging users to avoid overconfidence could make a meaningful difference in the ways these package are applied in data analysis.
