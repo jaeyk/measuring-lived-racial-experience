@@ -1,7 +1,7 @@
 # Measuring Lived Racial Experience
 **Systematically Measuring the Multi-dimensions of Lived Racial Experience**
 
-- The goal of this article is to document **how I cleaned, imputed, and ran a factor analysis on a large-scale survey data** (2016 National Asian American Survey) that measured the multi-dimensions of lived racial experience. This is part of the research which I have conducted with my advisor [Taeku Lee](https://www.law.berkeley.edu/our-faculty/faculty-profiles/taeku-lee/) (UC Berkeley) over the past two years (2018-2020). 
+- The goal of this article is to document **how I cleaned, imputed, and ran a factor analysis on a large-scale survey data** ([2016 National Asian American Post-Election Survey](http://naasurvey.com/data/)) that measured the multi-dimensions of lived racial experience. This is part of the research which I have conducted with my advisor [Taeku Lee](https://www.law.berkeley.edu/our-faculty/faculty-profiles/taeku-lee/) (UC Berkeley) over the past two years (2018-2020). 
 
 
 ## Motivation 
