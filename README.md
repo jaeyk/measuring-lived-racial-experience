@@ -110,7 +110,7 @@ imp <- mice(scaled,
 
 ```
  
-- The goal of imputation is to create imputed values that are as close as possible to observed values. Figure 2 is the kernel density estimates (KDE) for the marginal distribution of the imputed (red) and the observed (blue) values. Please note that kernel density estimation is calculated by weighting the distance of the data points. The plot shows that the distributions of the imputed and observed values are quite close especially among itmes on a likert scale. I created this and many other related KDE plots (see the R markdown file) using the `densityplot() function` from the `mice package`. 
+- The goal of imputation is to create imputed values that are as close as possible to observed values. Figure 2 is the kernel density estimates (KDE) for the marginal distribution of the imputed (red) and the observed (blue) values. Please note that kernel density estimation is calculated by weighting the distance of the data points. The plot shows that the distributions of the imputed and observed values are quite close especially among itmes on a likert scale. I created this and many other related KDE plots (see the R markdown file) for the diagonostic test using the `densityplot() function` from the `mice package`. 
 
 **Figure 2. The KDE for the Marginal Distribution of the Imputed (Red) and the Observed (Blue) Values**
 ![](<https://github.com/jaeyk/measuring-racial-lived-experience/blob/master/outputs/imputed_density_plot.png>)
@@ -159,7 +159,7 @@ vars <- vars %>%
 - Let's first check whether the assumption about the number of factors is valid. 
 
 **Figure 3. Parallel Analysis Result**
-![](<https://github.com/jaeyk/measuring-racial-lived-experience/blob/master/outputs/imputed_density_plot.png>)
+![](<https://github.com/jaeyk/measuring-racial-lived-experience/blob/master/outputs/scree_plot.png>)
 
 **Figure 4. Factor Analysis Result**
 ![](<https://github.com/jaeyk/measuring-racial-lived-experience/blob/master/outputs/factor_analysis.png>)
