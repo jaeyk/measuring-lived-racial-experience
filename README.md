@@ -40,7 +40,7 @@ df <- data %>%
 - **Rows** The next step is to take a close look at rows or responses. Like column names, these rows are also often not ready for analysis. For instance, if a question is measured on a 1–5 Likert scale, then the responses would look like “1. Strongly negative,” “2. Somewhat negative,” and so on. The problem with this is that in the end, we only want the numbers from these responses to conduct a statistical analysis. Thankfully, there is an easy solution. Focus on the string pattern. From these responses, we only need numbers, especially the first group (e.g., `1` or `99`). - **Rows** The next step is to take a close look at rows or responses. Like column names, these rows are also often not ready for analysis. For instance, if a question is measured on a 1–5 Likert scale, then the responses would look like “1. Strongly negative,” “2. Somewhat negative,” and so on. The problem with this is that in the end, we only want the numbers from these responses to conduct a statistical analysis. Thankfully, there is an easy solution. Focus on the string pattern. From these responses, we only need numbers, especially the first group (e.g., `1` or `99`). You can extract them by using [regular expression](https://en.wikipedia.org/wiki/Regular_expression) or defining a search pattern. Then you can create a function that uses this search pattern to extract the first capturing number group and apply the function to every column in the data. This trick makes a huge difference if you deal with data from a big survey. Find patterns and exploit them: this is the key point I will keep repeating throughout the document.
 
 ```{R}
-    # Create a function for capturing the first numeric elemetn of survey responses 
+    # Create a function for capturing the first number group from survey responses 
     
     return_numeric <- function(x) {as.numeric(gsub("([0-9]+).*$", "\\1", x))} # regular expression
     
@@ -159,7 +159,7 @@ vars <- vars %>%
 **Figure 3. Parallel Analysis Result**
 ![](<https://github.com/jaeyk/measuring-lived-racial-experience/blob/master/outputs/scree_plot.png>)
 
-After validating the `nfactors = 3` assumption, I ran the factor analysis using the observed data. I assume that these factors are orthogonal by setting the `rotate  = ‘oblimin’.` For interpretation, this means the factors show the correlations between question items and factors (for more information, see this [link](https://psu-psychology.github.io/psy-597-SEM/06_factor_models/factor_models.html#looking-under-the-hood-of-the-fa-model)). 
+- After validating the `nfactors = 3` assumption, I ran the factor analysis using the observed data. I assume that these factors are orthogonal by setting the `rotate  = ‘oblimin’.` For interpretation, this means the factors show the correlations between question items and factors (for more information, see this [link](https://psu-psychology.github.io/psy-597-SEM/06_factor_models/factor_models.html#looking-under-the-hood-of-the-fa-model)). 
 
 ```{r}
 
