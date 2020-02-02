@@ -206,7 +206,7 @@ Next, I visualized the relationship between factor loadings and the three factor
 
 Finally, I created three index variables based on questions related to each factor and then displayed how the three dimensions of lived racial experience vary across racial groups (see Figure 5).   
 
-**Figure 5. Three Dimensions of Racial Lived Experience Vary across Racial Groups**
+**Figure 5. Three Dimensions of Lived Racial Experience Vary across Racial Groups**
 ![](<https://github.com/jaeyk/measuring-lived-racial-experience/blob/master/outputs/factor_analysis_by_race.png>)
 
 
