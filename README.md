@@ -3,7 +3,7 @@
 
 
 
-- The goal of this article is to document **how I cleaned, imputed, and ran a factor analysis on a large-scale survey data** (2016 National Asian American Survey) to measure the multi-dimensions of racial lived experience. This is part of the research which I have conducted with my advisor [Taeku Lee](https://www.law.berkeley.edu/our-faculty/faculty-profiles/taeku-lee/) (UC Berkeley) for the past few years. 
+- The goal of this article is to document **how I cleaned, imputed, and ran a factor analysis on a large-scale survey data** (2016 National Asian American Survey) to measure the multi-dimensions of racial lived experience. This is part of the research which I have conducted with my advisor [Taeku Lee](https://www.law.berkeley.edu/our-faculty/faculty-profiles/taeku-lee/) (UC Berkeley) for the past two years (2018-2020). 
 
 
 
@@ -13,14 +13,14 @@
 - The main focus is **Practical**. Survey data is the bread and butter of opinion/behavioral research. However, most of the survey data is not saved in a format that is suitable for statistical analysis. Therefore, researchers and practitioners spend numerous hours to clean the data. Over the past few years, I realized that cleaning survey data has patterns. I want to share some of my tricks to exploit these patterns as they can be helpful for researchers and practitioners. In the near future, I plan to develop an R package that helps preprocessing survey data. For that reason, please feel free to create issues on the Git repository when you have difficulties applying my code to your project.
 
 
-##Workflow
+## Workflow
 
 In this section, I document how I preprocessed and analyzed the 2016 National Asian American Survey (NAAS) data step-by-step. I also provide the R code used in each step. Please note that `.Rmd` extension indicates an `R markdown file`. 
 
 
 ### 01_Cleaning Data [[01_data_cleaning.Rmd](https://github.com/jaeyk/measuring-racial-lived-experience/blob/master/code/01_data_cleaning.Rmd)] 
 
-- Please note that I assume that your survey data is saved in [a tidy format](https://cran.r-project.org/web/packages/tidyr/vignettes/tidy-data.html). Variables are columns and rows are observations. If not, turn your data into a tidy format. The `tidyr` package provides many useful tools to do this.  
+- **Tidying:** Please note that I assume that your survey data is saved in [a tidy format](https://cran.r-project.org/web/packages/tidyr/vignettes/tidy-data.html). The NAAS is. Variables are columns and rows are observations. If not, turn your data into a tidy format. The `tidyr` package provides many useful tools to do this easily.  
 - **Columns:** The first thing to do is to select columns or variables that you want to use for the analysis. In case of the NASS data, the original data has 406 variables. Yet, I did not need most of them. Most of the survey data, specially large ones, fall into this category. These survey are expensive to collect and, thus, try to be useful to a large number of and diverse users. The result of lots of questions that may have nothing to do with your particular research. Don't allow these variables take up your precious memory. 
 - In addition, when selecting columns, it is useful to comment what they are about. As you can see below, most questions are named in a survey, following the order in which they appeard in the questionnaire. They are not informative. You are likely to go back and forth between the codebook and the survey data. Save these extra steps by commenting. 
 
@@ -91,7 +91,7 @@ reverse_dummy <- function(data){
 
 - Even if a survey data is collected by probability sampling (a sampling method that involves random selection), it does not imply that the data is representative (=sampling estimates are unbiased estimators of population parameters). The survey might have failed to recruit survey respodnents as they planned. Then, we we may need to weight data. Also, these respondents might have missed or not responded all stated questions. Then, we may need imputate data. This missing data problem arises because data collection process is not entirely under the control of the people who designed and implemented a survey. Missing data is bound to occur and we should pay attention to them, especially whether the pattern of their occurance is random or systematic. 
 - Usuaully, big surveys provide their weights. From the user end, a more frequent problem is imputation: missing responses for questions of interest. 
-- An easy solution is to use listwise delection (`na.rm = TRUE`) or just ignoring these observations. This works only if these observations are missing completely at random (MCAR). This is a strong assuimption as it happens very rarely. The `nanair package` provides many useful functions to inspect missing values in data. I used the `miss_var_summary() function` from this pacakge to inspect the missing pattern and visualize it using ggplot2. The bar plot (Figure 1) shows that missing values are concentrated in particular variables and, thus, the missing pattern is unlikley to be MCAR. I also conducted Little's test, a global test for MCAR and it confirms that the chance for MCAR is extreme (low p-value). Therefore, listwise delection is discouraged as an option. 
+- An easy solution is to use listwise delection (`na.rm = TRUE`) or just ignoring these observations. This works only if these observations are missing completely at random (MCAR). This is a strong assuimption as it happens very rarely. The `nanair package` provides many useful functions to inspect missing values in data. I used the `miss_var_summary() function` from this pacakge to inspect the missing pattern and visualize it using ggplot2. The bar plot (Figure 1) shows that missing values are concentrated in particular variables and, thus, the missing pattern is unlikley to be MCAR. Please note that in the plot AAPI stands for Asian American Pacific Islanders. These group categories are self-identified. I also conducted Little's test, a global test for MCAR and it confirms that the chance for MCAR is extreme (low p-value). Therefore, listwise delection is discouraged as an option. 
 
 **Figure 1. Missing Pattern in the NAAS Data**
 ![](<https://github.com/jaeyk/measuring-racial-lived-experience/blob/master/outputs/missing_rate.png>)
