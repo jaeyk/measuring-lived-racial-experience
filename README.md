@@ -6,7 +6,7 @@
 
 ## Motivation 
 
-- This article does intend to discuss why we view lived racial experience as a multidimensional concept and why we measure it using particular questions used in this particular survey. That discussion goes far beyond the scope of this article. 
+- This article does not intend to discuss why we view lived racial experience as a multidimensional concept and why we measure it using particular questions used in this particular survey. That discussion goes far beyond the scope of this article. 
 - The main focus is **Practical**. Survey data is the bread and butter of opinion/behavioral research. However, most of the survey data is not saved in a format that is suitable for statistical analysis. Therefore, researchers and practitioners spend numerous hours cleaning up the data. Over the past few years, I have come to realize that patterns emerge when cleaning survey data, and I want to share some of my tricks for exploiting these patterns, as they can be helpful for researchers and practitioners. In the near future, I plan to develop an R package that helps with preprocessing survey data, so, please feel free to create issues on the Git repository if you have difficulties applying my code to your project.
 
 
