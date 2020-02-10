@@ -70,7 +70,7 @@ cleaned %>%
   filter(n_miss != 0) %>% # show variables that include missing values
   ggplot(aes(x = reorder(variable, pct_miss), y = pct_miss)) +
     geom_col() +
-    theme_fivethirtyeight() +
+    theme_base() +
     facet_wrap(~race) + # facet by race 
     coord_flip() # flip axes 
 
