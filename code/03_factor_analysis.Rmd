@@ -172,7 +172,7 @@ factor_df %>%
       labs(y= "Loading Strength", x = "Measures",
            title = "Factor Analysis Results",
            caption = "National Asian American Suvrey (2016)") +
-      theme_fivethirtyeight()
+   theme_base()
 
 ggsave("/home/jae/analyzing-racial-lived-experience/outputs/factor_analysis.png")
 
@@ -245,7 +245,7 @@ factored %>%
          upper.ci = mean + qt(1 - (0.05 / 2), n - 1) * se) %>%
   ggplot(aes(x = reorder(race, mean), y = mean, ymax = upper.ci, ymin = lower.ci)) +
     geom_pointrange(size = 0.7) + # point estimates plus confidence intervals 
-    theme_fivethirtyeight() +
+ theme_base() +
     coord_flip() +
     labs(y= "Average score of survey responses", x = "Race",
          title = "Subgroup Descriptive Analysis Results",

@@ -27,7 +27,7 @@ pacman::p_load(
 
 ```
 
-    ## 1. Importing files 
+## 1. Importing files 
 
 - The data has 406 variables (the number of columns) and 6,448 observations (the number of rows for each column). Also, please note that the result of the `table() function` which shows that every survey participant participated the full survey. 
 
