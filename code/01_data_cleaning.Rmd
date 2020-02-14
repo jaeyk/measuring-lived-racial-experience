@@ -166,14 +166,14 @@ Some variables are better treated as factors because they are categorical variab
 
 recoded$race <- recoded$race %>%
   as.character() %>%
-  recode("1" = "AAPI") %>% # Originally Asian Americans 
-  recode("2" = "AAPI") %>% # Originally Pacific Islanders
-  recode("3" = "White") %>%
-  recode("4" = "Black") %>%
-  recode("5" = "Black") %>% # Originally African American
-  recode("6" = "Latino") %>%
-  recode("7" = "Native American") %>%
-  recode("9" = "Multiracial") %>%
+  recode("1" = "AAPI",  # Originally Asian Americans 
+         "2" = "AAPI",  # Originally Pacific Islanders
+         "3" = "White",
+         "4" = "Black",
+         "5" = "Black", # Originally African American
+         "6" = "Latino",
+         "7" = "Native American",
+         "9" = "Multiracial") %>%
   as.factor()
 
 # Party ID
