@@ -33,6 +33,11 @@ pacman::p_load(
         FactoMineR # for multivariate exploratory data analysis and data mining 
 )
 
+
+source("/home/jae/analyzing-racial-lived-experience/functions/theme_publications.r")
+
+theme_set(theme_Publication(14))
+
 ```
 
 ## 1. Importing files 
@@ -171,7 +176,7 @@ factor_df %>%
                          high = "blue", mid = "white", low = "red", midpoint = 0, guide = F) +
       labs(y= "Loading Strength", x = "Measures",
            title = "Factor Analysis Results",
-           caption = "National Asian American Suvrey (2016)") +
+           caption = "Source: National Asian American Suvrey (2016)") +
    theme_base()
 
 ggsave("/home/jae/analyzing-racial-lived-experience/outputs/factor_analysis.png")
@@ -249,7 +254,7 @@ factored %>%
     coord_flip() +
     labs(y= "Average score of survey responses", x = "Race",
          title = "Subgroup Descriptive Analysis Results",
-         caption = "National Asian American Suvrey (2016)") +
+         caption = "Source: National Asian American Suvrey (2016)") +
     facet_wrap(~racial_experience)
 
 ggsave("/home/jae/analyzing-racial-lived-experience/outputs/factor_analysis_by_race.png")
