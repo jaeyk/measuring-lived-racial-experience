@@ -179,7 +179,7 @@ factor_df %>%
            caption = "Source: National Asian American Suvrey (2016)") +
    theme_base()
 
-ggsave("/home/jae/analyzing-racial-lived-experience/outputs/factor_analysis.png", height = 7, width = 8)
+ggsave("/home/jae/analyzing-racial-lived-experience/outputs/factor_analysis.png", height = 6, width = 8)
 
 ```
 
