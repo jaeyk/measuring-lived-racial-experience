@@ -194,7 +194,7 @@ Next, I visualized the relationship between factor loadings and the three factor
 **Figure 4. Factor Analysis Result**
 ![](<https://github.com/jaeyk/measuring-lived-racial-experience/blob/master/outputs/factor_analysis.png>)
 
-Finally, I created three index variables, weighted avergae responses, by multiplying the average responses of questions related to each factor with their factor loadings. The red point plot (weighted average respones) have narrower confidence intervals (or more reliable) than the blue point plot (non-weighted average responses) in Figure 5. 
+Finally, I created three index variables, weighted avergae responses, by multiplying the average responses of questions related to each factor with their factor loadings. The blue point plot (weighted average respones) have narrower confidence intervals (or more reliable) than the red point plot (non-weighted average responses) in Figure 5.
 
 **Figure 5. Three Dimensions of Lived Racial Experience**
 ![](<https://github.com/jaeyk/measuring-lived-racial-experience/blob/master/outputs/weighted_responses.png>)
