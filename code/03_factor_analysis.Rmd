@@ -292,6 +292,6 @@ weighted_comparison %>%
          y= "Average score of survey responses", x = "Factor",
          caption = "Source: National Asian American Suvrey (2016)")
 
-ggsave("/home/jae/analyzing-racial-lived-experience/outputs/weighted_responses.png")
+ggsave("/home/jae/analyzing-racial-lived-experience/outputs/weighted_responses.png", width = 10)
 
 ```
