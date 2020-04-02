@@ -290,7 +290,8 @@ weighted_comparison %>%
     labs(title = "Three Dimensions of Lived Racial Experience",
          subtitle = "Only included Asian Americans",
          y= "Average score of survey responses", x = "Factor",
-         caption = "Source: National Asian American Suvrey (2016)")
+         caption = "Source: National Asian American Suvrey (2016)",
+         col = "Weighted")
 
 ggsave("/home/jae/analyzing-racial-lived-experience/outputs/weighted_responses.png", width = 10)
 
