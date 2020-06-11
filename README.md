@@ -21,7 +21,7 @@ In this section, I document how I preprocessed and analyzed the 2016 National As
 - **Columns:** The first thing to do is to select the columns or variables that you want to use for the analysis. In case of the NAAS data, the original data has 406 variables; however, I did not need most of them. Most survey data, especially for large surveys, fall into this category. These surveys are expensive to collect and thus, they contain information that is intended to be useful to a large number of and diverse users. The result of this may be that there many questions that have nothing to do with your particular research. Don’t allow these variables to take up your precious memory.
 - In addition, when selecting columns, it is useful to make a comment on what they are about. As you can see below, most questions are named based on the order in which they appeared in the questionnaire. This is not especially informative, and it means that you will likely have to go back and forth between the codebook and the survey data. Save yourself these extra steps by commenting clearly on the content.
 
-```R
+```r
 df <- data %>%
 	dplyr::select(
 
@@ -40,7 +40,7 @@ df <- data %>%
 - **Rows** The next step is to take a close look at rows or responses. Like column names, these rows are also often not ready for analysis. For instance, if a question is measured on a 1–5 Likert scale, then the responses would look like “1. Strongly negative,” “2. Somewhat negative,” and so on. The problem with this is that in the end, we only want the numbers from these responses to conduct a statistical analysis. Thankfully, there is an easy solution. Focus on the string pattern. From these responses, we only need numbers, especially the first group (e.g., `1` or `99`).
 - The next step is to take a close look at rows or responses. Like column names, these rows are also often not ready for analysis. For instance, if a question is measured on a 1–5 Likert scale, then the responses would look like “1. Strongly negative,” “2. Somewhat negative,” and so on. The problem with this is that in the end, we only want the numbers from these responses to conduct a statistical analysis. Thankfully, there is an easy solution. Focus on the string pattern. From these responses, we only need numbers, especially the first group (e.g., `1` or `99`). You can extract them by using [regular expression](https://en.wikipedia.org/wiki/Regular_expression) or defining a search pattern. Then you can create a function that uses this search pattern to extract the first capturing number group and apply the function to every column in the data. This trick makes a huge difference if you deal with data from a big survey. Find patterns and exploit them: this is the key point I will keep repeating throughout the document.
 
-```{R}
+```r
     # Create a function for capturing the first number group from survey responses
 
     return_numeric <- function(x) {as.numeric(gsub("([0-9]+).*$", "\\1", x))} # regular expression
@@ -54,13 +54,13 @@ df <- data %>%
 - While paying attention to general patterns is the first step toward efficiency, don’t lose sight of the details. There are different categories of variables—while some are categorical, others are ordinal or numeric. For example, categorical variables are better treated as factor variables in R, as statistical models are sensitive to these differences. Make sure categorical variables are treated as factors and that they remain that way.
 - Once you have extracted the first capturing number group from the responses, it is easy to replace nonresponses with NAs. Find out which number stands for nonresponses, index it, and replace all cases of it with NAs.
 
-```{R}
+```r
 recoded[recoded == 9] <- NA
 ```
 
 - Scaling is another important problem. A survey may have mixed scales. While some questions provide five choices, others may have only binary choices (“Yes” or “No”). These inconsistencies make measuring covariances among them less accurate and interpreting their regression coefficients difficult. You can rescale them on the identical normalized scale (0–1) using the `rescale() function` from the `scales` package.
 
-```{R}
+```r
 # Re-scale ordinal responses
 
 rescaled <- recoded %>%
@@ -71,7 +71,7 @@ rescaled <- recoded %>%
 
 - Another problem occurs when replacing responses in binary choice questions. In the data I used for this project, I found that `1` corresponds to “Yes” and `2` corresponds to “No” in binary questions. In my view, these variables are better treated as dummy variables where `1` corresponds to “Yes” and `0` corresponds to “No.” This way we can find important patterns in the data more easily. For instance, under this condition, the means of these questions reveal the percentages of agreement among the survey respondents about the survey constructs. To do this, you can use the same trick I demonstrated above. First, create a function that recodes binary responses. Second, apply the function to each variable in the data using the `apply function()`. This custom function + `the apply() function` combination is useful for reducing redundancy in data cleaning.
 
-```{R}
+```r
 # Function to recode binary responses
 
 reverse_dummy <- function(data){
@@ -98,7 +98,7 @@ reverse_dummy <- function(data){
 - In this case, I took a multiple imputation approach. Basically, I recovered (imputed) missing values based on the observed data. I did so by making simulations of these imputed values in order to garner some measures of their uncertainty. This method was pioneered by [Donald Rubin](https://statistics.fas.harvard.edu/people/donald-b-rubin) in the 1970s, and many packages in R help to implement this method pretty easily.
 - In this project, I used the `mice package` developed by [Stef van Buuren](https://stefvanbuuren.name/).  The following code shows how the imputation model is set up. I comment on each argument to make it explicit how the model is set up. For instance, the `m argument` refers to the number of imputations, and I set it to `5`. This way I do not need to go back to the package documentation to recall what each argument is for. Also, readers can easily comprehend how I approach the imputation problem. More commenting and increased transparency create a win-win situation.
 
-```{r}
+```r
 
 imp <- mice(scaled,
      seed = 1234, # for reproducibility
@@ -139,7 +139,7 @@ q5_7_l      0.02228526 0.04290861 0.5193656  5.154995 6.250292e-01
 
 - I selected the variables related to the multi-dimensions of lived racial experience from the survey. This time, I renamed these variable names using the `rename function()` from the `dplyr` package, as they will appear in the plots I will soon create.
 
-```{R}
+```r
 # Renaming these variables
 
 vars <- vars %>%
@@ -162,7 +162,7 @@ vars <- vars %>%
 
 - After validating the `nfactors = 3` assumption, I ran the factor analysis using the observed data. I assume that these factors are orthogonal by setting the `rotate  = ‘oblimin’.` For interpretation, this means the factors show the correlations between question items and factors (for more information, see this [link](https://psu-psychology.github.io/psy-597-SEM/06_factor_models/factor_models.html#looking-under-the-hood-of-the-fa-model)).
 
-```{r}
+```r
 
 # Factor analysis
 factor_analysis <- fa(vars,
@@ -174,7 +174,7 @@ factor_analysis <- fa(vars,
 
 In this section, the goal is to show how I visualized the relationship between each question item and three factors. I did this in two steps. I first extracted factor loadings (correlation coefficients between observed data and factors) and then put them into a dataframe.
 
-```{R}
+```r
 
 # Extract factor loadings
 factor_frame <- factor_analysis$loadings %>%
