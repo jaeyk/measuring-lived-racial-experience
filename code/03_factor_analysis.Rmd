@@ -31,13 +31,19 @@ pacman::p_load(
         psych, # for psychological tools 
         factoextra, # for extracting and visualizing the results of multivariate data analyses 
         FactoMineR, # for multivariate exploratory data analysis and data mining
-        conflicted # for resolving conflicting functions
+        conflicted, # for resolving conflicting functions
+        ggthemes, # for fancy ggplot themes
+        here, # for self-contained projects
+        ggpubr # for pub-ready themes 
 )
 
+devtools::install_github("jaeyk/makereproducible",
+        dependencies = TRUE)
+        
+library(makereproducible)
 
-source("/home/jae/analyzing-racial-lived-experience/functions/theme_publications.r")
-
-theme_set(theme_Publication(14))
+# for publication-friendly theme 
+theme_set(theme_pubr())
 
 # Prefer select from dplyr 
 conflict_prefer("select", "dplyr")
@@ -54,7 +60,7 @@ Importing the file that we created in `02_imputation.Rmd`.
 # Import 
 
 imputed <- read.csv("/home/jae/analyzing-racial-lived-experience/processed_data/imputed.csv")[,-1] %>% # Ignore the first column 
-  filter(race == "AAPI")
+    filter(race == "AAPI")
 
 ```
 
@@ -68,9 +74,9 @@ imputed <- read.csv("/home/jae/analyzing-racial-lived-experience/processed_data/
 # Selecting variables 
 
 vars <- imputed %>%
-  select(q5_1_b, q5_1_c, q5_1_d, q5_1_e, q5_1_g, q5_1_h, q5_1_i, # micro-aggression 
-                q5_2_a, q5_2_b, q5_2_c, q5_2_d, q5_2_e, q5_2_f, # discrimination
-                q5_7_a, q5_7_b, q5_7_c, q5_7_d, q5_7_e, q5_7_f, q5_7_g, q5_7_h, q5_7_i, q5_7_j, q5_7_k, q5_7_l) # everyday challenge 
+    select(q5_1_b, q5_1_c, q5_1_d, q5_1_e, q5_1_g, q5_1_h, q5_1_i, # micro-aggression 
+                  q5_2_a, q5_2_b, q5_2_c, q5_2_d, q5_2_e, q5_2_f, # discrimination
+                  q5_7_a, q5_7_b, q5_7_c, q5_7_d, q5_7_e, q5_7_f, q5_7_g, q5_7_h, q5_7_i, q5_7_j, q5_7_k, q5_7_l) # everyday challenge 
 
 ```
 
@@ -79,36 +85,36 @@ vars <- imputed %>%
 # Renaming these variables 
 
 vars <- vars %>%
-  rename(# micro-agression
-         service_unfriendly = q5_1_b,
-         english_proficiency = q5_1_c,
-         afraid_of_you = q5_1_d,
-         thought_dishonest = q5_1_e,
-         insulted = q5_1_g,
-         threatened = q5_1_h,
-         name_mispronounced = q5_1_i,
-         
-         # discrimination 
-         promotion_denied = q5_2_a,
-         unfairly_fired = q5_2_b,
-         job_rejected = q5_2_c,
-         policy_brutality = q5_2_d,
-         housing_discrimination = q5_2_e,
-         neighbor_hostility = q5_2_f,
-         
-         # everyday challenge
-         visa_delay = q5_7_a,
-         school_quality = q5_7_b,
-         school_bullied = q5_7_c,
-         college_affordability = q5_7_d,
-         elderly_care = q5_7_e,
-         medical_care = q5_7_f,
-         rent_affordability = q5_7_g,
-         college_debt = q5_7_h,
-         medical_debt = q5_7_i,
-         card_debt = q5_7_j,
-         child_care = q5_7_k,
-         little_saving = q5_7_l)
+    rename(# micro-agression
+        service_unfriendly = q5_1_b,
+        english_proficiency = q5_1_c,
+        afraid_of_you = q5_1_d,
+        thought_dishonest = q5_1_e,
+        insulted = q5_1_g,
+        threatened = q5_1_h,
+        name_mispronounced = q5_1_i,
+        
+        # discrimination 
+        promotion_denied = q5_2_a,
+        unfairly_fired = q5_2_b,
+        job_rejected = q5_2_c,
+        policy_brutality = q5_2_d,
+        housing_discrimination = q5_2_e,
+        neighbor_hostility = q5_2_f,
+        
+        # everyday challenge
+        visa_delay = q5_7_a,
+        school_quality = q5_7_b,
+        school_bullied = q5_7_c,
+        college_affordability = q5_7_d,
+        elderly_care = q5_7_e,
+        medical_care = q5_7_f,
+        rent_affordability = q5_7_g,
+        college_debt = q5_7_h,
+        medical_debt = q5_7_i,
+        card_debt = q5_7_j,
+        child_care = q5_7_k,
+        little_saving = q5_7_l)
 
 ```
 
@@ -125,10 +131,10 @@ vars <- vars %>%
 set.seed(1234)
 
 fa.parallel(vars, 
-   fm = 'ml', # eigenvalues using maxium likelihood (common factor model) 
-   fa = 'fa', # principal axis factor analysis
-   n.iter = 50, # number of iterations
-   SMC = TRUE) 
+    fm = 'ml', # eigenvalues using maxium likelihood (common factor model) 
+    fa = 'fa', # principal axis factor analysis
+    n.iter = 50, # number of iterations
+    SMC = TRUE) 
 
 ```
 
@@ -173,21 +179,20 @@ Next, I visualized the relationship between factor loadings and the three factor
 ```{r}
 
 factor_df %>%
-  gather(key = "Factor", value = "Loading", 
-         everyday_challenge:discrimination) %>%
-  ggplot(aes(x = factor(Measures, levels = factor_df$Measures), y = Loading, fill = Loading)) +
-    geom_bar(stat = "identity") +
-    coord_flip() +
-    facet_wrap(~Factor, nrow = 1) +
-    scale_fill_gradient2(name = "Loading",
-                         high = "blue", mid = "white", low = "red", midpoint = 0, guide = F) +
-      labs(y= "Loading Strength", x = "Measures",
-           title = "Factor Analysis Results",
-           subtitle = "Only included Asian Americans",
-           caption = "Source: National Asian American Suvrey (2016)") +
-   theme_base()
+    gather(key = "Factor", value = "Loading", 
+           everyday_challenge:discrimination) %>%
+    ggplot(aes(x = factor(Measures, levels = factor_df$Measures), y = Loading, fill = Loading)) +
+        geom_bar(stat = "identity") +
+        coord_flip() +
+        facet_wrap(~Factor, nrow = 1) +
+        scale_fill_gradient2(name = "Loading",
+                             high = "blue", mid = "white", low = "red", midpoint = 0, guide = F) +
+          labs(y= "Loading Strength", x = "Measures",
+               title = "Factor Analysis Results",
+               subtitle = "Only included Asian Americans",
+               caption = "Source: National Asian American Suvrey (2016)")
 
-ggsave("/home/jae/analyzing-racial-lived-experience/outputs/factor_analysis.png", height = 6, width = 8)
+ggsave(make_here("/home/jae/analyzing-racial-lived-experience/outputs/factor_analysis.png"), height = 6, width = 8)
 
 ```
 
@@ -200,45 +205,45 @@ I created index variables by calculating the mean of survey items related to eac
 # Micro-aggression
 
 micro_aggression <- vars %>% 
-  select(service_unfriendly,
-         english_proficiency,
-         afraid_of_you,
-         thought_dishonest,
-         insulted,
-         threatened,
-         name_mispronounced) %>%
-  summarise_all(funs(mean)) %>%
-  gather(Measurees, micro_aggression_avg, c(1:7))
+    select(service_unfriendly,
+        english_proficiency,
+        afraid_of_you,
+        thought_dishonest,
+        insulted,
+        threatened,
+        name_mispronounced) %>%
+    summarise_all(funs(mean)) %>%
+    gather(Measurees, micro_aggression_avg, c(1:7))
 
 # Discrimination 
 
 discrimination <- vars %>% 
-  select(promotion_denied,
-         unfairly_fired,
-         job_rejected,
-         policy_brutality,
-         housing_discrimination,
-         neighbor_hostility) %>%
-  summarise_all(funs(mean)) %>%
-  gather(Measurees, discrimination_avg, c(1:6))
+    select(promotion_denied,
+        unfairly_fired,
+        job_rejected,
+        policy_brutality,
+        housing_discrimination,
+        neighbor_hostility) %>%
+    summarise_all(funs(mean)) %>%
+    gather(Measurees, discrimination_avg, c(1:6))
 
 # Everyday challenge
 
 everyday_challenge <- vars %>% 
-  select(visa_delay,
-         school_quality,
-         school_bullied,
-         college_affordability,
-         elderly_care,
-         medical_care,
-         rent_affordability,
-         college_debt,
-         medical_debt,
-         card_debt,
-         child_care,
-         little_saving) %>%
-  summarise_all(funs(mean)) %>%
-  gather(Measurees, micro_aggression_avg, c(1:12))
+    select(visa_delay,
+        school_quality,
+        school_bullied,
+        college_affordability,
+        elderly_care,
+        medical_care,
+        rent_affordability,
+        college_debt,
+        medical_debt,
+        card_debt,
+        child_care,
+        little_saving) %>%
+    summarise_all(funs(mean)) %>%
+    gather(Measurees, micro_aggression_avg, c(1:12))
 
 ```
 
@@ -251,7 +256,8 @@ I then replaced the survey items related to lived racial experience with the thr
 
 # Replace old questions 
 
-factored <- rbind(data.frame("Weighted" = factor_df$micro_aggression[1:7] * micro_aggression[,2]),
+factored <- rbind(data.frame("Weighted" = 
+factor_df$micro_aggression[1:7] * micro_aggression[,2]),
                   data.frame("Weighted" = factor_df$discrimination[8:(8+5)] * discrimination[,2]),
                   data.frame("Weighted" = factor_df$everyday_challenge[(8+6):(8+6+11)] * everyday_challenge[,2]))
                   
@@ -260,13 +266,13 @@ factored$factor <- c(rep("micro_aggression", 7), rep("discrimination", 6), rep("
 # Non-weighted average responses 
 
 non_factored <- data.frame("Non_weighted" = vars %>% 
-  summarise_all(funs(mean)) %>% as.numeric(),
+    summarise_all(funs(mean)) %>% as.numeric(),
                            "factor" = c(rep("micro_aggression", 7), rep("discrimination", 6), rep("everyday_challenge", 12)))
 
 # Merge them 
 
 weighted_comparison <- merge(factored, non_factored) %>%
-  gather(weighted, value, Weighted:Non_weighted)
+    gather(weighted, value, Weighted:Non_weighted)
 
 ```
 
@@ -276,23 +282,23 @@ weighted_comparison <- merge(factored, non_factored) %>%
 
 
 weighted_comparison %>%
-  group_by(factor, weighted) %>% # group to summarize
-  summarise(mean = mean(value), # summarize mean, standard deviation, and n 
-            sd = sd(value),
-            n = n()) %>%
-  mutate(se = sd / sqrt(n), # calculate standard errors and confidence intervals 
-         lower.ci = mean - qt(1 - (0.05 / 2), n - 1) * se,
-         upper.ci = mean + qt(1 - (0.05 / 2), n - 1) * se) %>%
-  ggplot(aes(x = reorder(factor, mean), y = mean, ymax = upper.ci, ymin = lower.ci, color = weighted)) +
-    geom_pointrange(size = 0.7) + # point estimates plus confidence intervals 
- theme_base() +
-    coord_flip() +
-    labs(title = "Three Dimensions of Lived Racial Experience",
-         subtitle = "Only included Asian Americans",
-         y= "Average score of survey responses", x = "Factor",
-         caption = "Source: National Asian American Suvrey (2016)",
-         col = "Weighted")
+    group_by(factor, weighted) %>% # group to summarize
+    summarise(mean = mean(value), # summarize mean, standard deviation, and n 
+              sd = sd(value),
+              n = n()) %>%
+    mutate(se = sd / sqrt(n), # calculate standard errors and confidence intervals 
+           lower.ci = mean - qt(1 - (0.05 / 2), n - 1) * se,
+           upper.ci = mean + qt(1 - (0.05 / 2), n - 1) * se) %>%
+    ggplot(aes(x = reorder(factor, mean), y = mean, ymax = upper.ci, ymin = lower.ci, color = weighted)) +
+        geom_pointrange(size = 0.7) + # point estimates plus confidence intervals 
+        theme_base() +
+        coord_flip() +
+        labs(title = "Three Dimensions of Lived Racial Experience",
+             subtitle = "Only included Asian Americans",
+             y= "Average score of survey responses", x = "Factor",
+             caption = "Source: National Asian American Suvrey (2016)",
+             col = "Weighted")
 
-ggsave("/home/jae/analyzing-racial-lived-experience/outputs/weighted_responses.png", width = 10)
+ggsave(make_here("/home/jae/analyzing-racial-lived-experience/outputs/weighted_responses.png"), width = 10)
 
 ```

@@ -15,16 +15,23 @@ output:
 
 # rm(list = ls())
 
-# Import libraries (adapted from this link: https://stackoverflow.com/questions/4090169/elegant-way-to-check-for-missing-packages-and-install-them)
-
 if (!require("pacman")) install.packages("pacman")
 pacman::p_load(
         foreign, # for importing stata files 
         tidyverse, # for the tidyverse framework 
         psych, # for psych tools  
-        ggthemes # for fancy ggplot themes
+        ggthemes, # for fancy ggplot themes
+        here, # for self-contained projects
+        ggpubr # for pub-ready themes 
 )
 
+devtools::install_github("jaeyk/makereproducible",
+        dependencies = TRUE)
+        
+library(makereproducible)
+
+# for publication-friendly theme 
+theme_set(theme_pubr())
 ```
 
 ## 1. Importing files 
@@ -35,7 +42,7 @@ pacman::p_load(
 
 # Import 
 
-data <- read.dta("/home/jae/analyzing-racial-lived-experience/raw_data/naas16post-weighted.dta")
+data <- read.dta(make_here("/home/jae/analyzing-racial-lived-experience/raw_data/naas16post-weighted.dta"))
 
 # Participation 
 
@@ -52,72 +59,72 @@ We do not need every variable in the data for the data analysis. Let's select th
 # Select key variables 
 
 df <- data %>%
-  dplyr::select(
+    dplyr::select(
   
-    ## Covariates
-    
-    race, # race 
-    pid4, # party ID
-    q10_2b, # education level 
-    q10_15, # income level
-    q10_18, # age
-    s9a, # states 
-    forborn, # foreign born 
-    citizen, # citizen 
-    
-    ## DV: Identity and gorup formation outcomes
-    
-    ### Linked fate (group consciousness)
-    
-    q4_3, # other race linked fate agreement 
-    
-    ### Identity 
-    
-    q4_2a, # racial identity 
-    q4_2d, # American identity 
-    
-    ### What race means 
-    
-    q4_5a, # common race 
-    q4_5b, # common culture 
-    q4_5c, # common econ interests
-    q4_5d, # common political interests
-    
-    ## IV: Racial lived experience measures
-    
-    ### Micro-aggression
-    
-    q5_1_b, # service unfriendly 
-    q5_1_c, # English proficiency 
-    q5_1_d, # afraid of you 
-    q5_1_e, # thought dishonest 
-    q5_1_g, # insulted 
-    q5_1_h, # threatened  
-    q5_1_i, # name mispronounced 
-    
-    ### Discrimination 
-    
-    q5_2_a, # promotion denied 
-    q5_2_b, # unfairly fired 
-    q5_2_c, # job rejected 
-    q5_2_d, # police brutality  
-    q5_2_e, # housing discrimination  
-    q5_2_f, # neighbor hostility 
-    
-    ### Everyday challenge
-    
-    q5_7_a, # visa delay 
-    q5_7_b, # school quality 
-    q5_7_c, # school bullied 
-    q5_7_d, # college affordability 
-    q5_7_e, # elderly care 
-    q5_7_f, # medical care
-    q5_7_g, # rent affordability 
-    q5_7_h, # college debt
-    q5_7_i, # medical debt 
-    q5_7_j, # card debt
-    q5_7_k, # childcare 
-    q5_7_l # little saving 
+        ## Covariates
+        
+        race, # race 
+        pid4, # party ID
+        q10_2b, # education level 
+        q10_15, # income level
+        q10_18, # age
+        s9a, # states 
+        forborn, # foreign born 
+        citizen, # citizen 
+        
+        ## DV: Identity and gorup formation outcomes
+        
+        ### Linked fate (group consciousness)
+        
+        q4_3, # other race linked fate agreement 
+        
+        ### Identity 
+        
+        q4_2a, # racial identity 
+        q4_2d, # American identity 
+        
+        ### What race means 
+        
+        q4_5a, # common race 
+        q4_5b, # common culture 
+        q4_5c, # common econ interests
+        q4_5d, # common political interests
+        
+        ## IV: Racial lived experience measures
+        
+        ### Micro-aggression
+        
+        q5_1_b, # service unfriendly 
+        q5_1_c, # English proficiency 
+        q5_1_d, # afraid of you 
+        q5_1_e, # thought dishonest 
+        q5_1_g, # insulted 
+        q5_1_h, # threatened  
+        q5_1_i, # name mispronounced 
+        
+        ### Discrimination 
+        
+        q5_2_a, # promotion denied 
+        q5_2_b, # unfairly fired 
+        q5_2_c, # job rejected 
+        q5_2_d, # police brutality  
+        q5_2_e, # housing discrimination  
+        q5_2_f, # neighbor hostility 
+        
+        ### Everyday challenge
+        
+        q5_7_a, # visa delay 
+        q5_7_b, # school quality 
+        q5_7_c, # school bullied 
+        q5_7_d, # college affordability 
+        q5_7_e, # elderly care 
+        q5_7_f, # medical care
+        q5_7_g, # rent affordability 
+        q5_7_h, # college debt
+        q5_7_i, # medical debt 
+        q5_7_j, # card debt
+        q5_7_k, # childcare 
+        q5_7_l # little saving 
     ) 
 
 # Glimpse
@@ -146,9 +153,9 @@ apply(df, 2, unique)
 return_numeric <- function(x) {as.numeric(gsub("([0-9]+).*$", "\\1", x))} # regular expression
 
 recoded <- df %>%
-  select_if(negate(is.character)) %>% # exclude the only character variable 
-  apply(2, return_numeric) %>% # apply the function to every column in the subsetted data 
-  as.data.frame() # turn it into a dataframe (otherwise, it's a matrix)
+    select_if(negate(is.character)) %>% # exclude the only character variable 
+    apply(2, return_numeric) %>% # apply the function to every column in the subsetted data 
+    as.data.frame() # turn it into a dataframe (otherwise, it's a matrix)
 
 # Rebind the character column (states)
 
@@ -165,16 +172,16 @@ Some variables are better treated as factors because they are categorical variab
 # Race
 
 recoded$race <- recoded$race %>%
-  as.character() %>%
-  recode("1" = "AAPI",  # Originally Asian Americans 
-         "2" = "AAPI",  # Originally Pacific Islanders
-         "3" = "White",
-         "4" = "Black",
-         "5" = "Black", # Originally African American
-         "6" = "Latino",
-         "7" = "Native American",
-         "9" = "Multiracial") %>%
-  as.factor()
+    as.character() %>%
+    recode("1" = "AAPI",  # Originally Asian Americans 
+           "2" = "AAPI",  # Originally Pacific Islanders
+           "3" = "White",
+           "4" = "Black",
+           "5" = "Black", # Originally African American
+           "6" = "Latino",
+           "7" = "Native American",
+           "9" = "Multiracial") %>%
+    as.factor()
 
 # Party ID
 
@@ -200,11 +207,7 @@ recoded$citizen <- as.factor(recoded$citizen)
 
 paste("What's the percentage of missing values in the data BEFORE replacing non-reponse values with NAs?:", mean(is.na(recoded)))
 
-recoded[recoded == 9] <- NA
-recoded[recoded == 88] <- NA
-recoded[recoded == 99] <- NA
-recoded[recoded == 8888] <- NA
-recoded[recoded == 9999] <- NA
+recoded[recoded %in% c(9, 88, 99, 8888, 9999)] <- NA
 
 paste("What's the percentage of missing values in the data AFTER replacing non-reponse values with NAs?:", mean(is.na(recoded)))
 
@@ -232,10 +235,10 @@ Turn binary response variables (`Yes` or `No`) into dummy variables (`Yes` =  `1
 # Function to recode binary responses 
 
 reverse_dummy <- function(data){
-  data[data == 1] <- 2
-  data[data == 0] <- 1
-  data[data == 2] <- 0
-  return(data)
+    data[data == 1] <- 2
+    data[data == 0] <- 1
+    data[data == 2] <- 0
+    return(data)
 }
 
 ```
@@ -247,19 +250,19 @@ While we inspected how values are coded in the data using `the apply() function`
 # Recode binary responses
 
 rescaled1 <- rescaled %>% 
-  dplyr::select(starts_with("q4_5")) %>%
-  apply(2, reverse_dummy) %>%
-  as.data.frame()
+    dplyr::select(starts_with("q4_5")) %>%
+    apply(2, reverse_dummy) %>%
+    as.data.frame()
 
 rescaled2 <- rescaled %>% 
-  dplyr::select(starts_with("q5_1")) %>%
-  apply(2, reverse_dummy) %>%
-  as.data.frame()
+    dplyr::select(starts_with("q5_1")) %>%
+    apply(2, reverse_dummy) %>%
+    as.data.frame()
 
 rescaled3 <- rescaled %>% 
-  dplyr::select(starts_with("q5_2")) %>%
-  apply(2, reverse_dummy) %>%
-  as.data.frame()
+    dplyr::select(starts_with("q5_2")) %>%
+    apply(2, reverse_dummy) %>%
+    as.data.frame()
   
 # Combin binary recoded columns 
 
@@ -268,14 +271,14 @@ bi_rescaled <- bind_cols(rescaled1, rescaled2, rescaled3)
 # Combine with the original column 
 
 rescaled <- rescaled %>%
-  dplyr::select(-c(names(bi_rescaled))) %>%
-  bind_cols(bi_rescaled)
+    dplyr::select(-c(names(bi_rescaled))) %>%
+    bind_cols(bi_rescaled)
 
 # The other columns 
 
 scaled <- recoded %>%
-  dplyr::select(-starts_with("q")) %>%
-  bind_cols(rescaled)
+    dplyr::select(-starts_with("q")) %>%
+    bind_cols(rescaled)
 
 ```
 
@@ -283,6 +286,6 @@ scaled <- recoded %>%
 
 ```{r}
 
-write.csv(scaled, "/home/jae/analyzing-racial-lived-experience/processed_data/cleaned.csv")
+write.csv(scaled, make_here("/home/jae/analyzing-racial-lived-experience/processed_data/cleaned.csv"))
 
 ```

@@ -32,9 +32,18 @@ pacman::p_load(
         naniar, # for missing values 
         MissMech, # testing patterns among missing values 
         BaylorEdPsych, # testing patterns among missing values
-        SuperLearner, # for choosing a weighted combination of different algorithms 
-        ggthemes # for fancy ggplot themes
+        ggthemes, # for fancy ggplot themes
+        here, # for self-contained projects
+        ggpubr # for pub-ready themes 
 )
+
+devtools::install_github("jaeyk/makereproducible",
+        dependencies = TRUE)
+        
+library(makereproducible)
+
+# for publication-friendly theme 
+theme_set(theme_pubr())
 
 ```
 
@@ -46,7 +55,7 @@ Importing the file that we created in `01_data_cleaning.Rmd`.
 
 # Import 
 
-cleaned <- read.csv("/home/jae/analyzing-racial-lived-experience/processed_data/cleaned.csv")[,-1] # ignore the first column (=row numbers)
+cleaned <- read.csv(make_here("/home/jae/analyzing-racial-lived-experience/processed_data/cleaned.csv"))[,-1] # ignore the first column (=row numbers)
 
 ```
 
@@ -65,16 +74,15 @@ cleaned <- read.csv("/home/jae/analyzing-racial-lived-experience/processed_data/
 # Visualize the percentaeg of missing values by variables and subgroups 
 
 cleaned %>%
-  group_by(race) %>% # group by race
-  miss_var_summary() %>% # summary 
-  filter(n_miss != 0) %>% # show variables that include missing values
-  ggplot(aes(x = reorder(variable, pct_miss), y = pct_miss)) +
-    geom_col() +
-    theme_base() +
-    facet_wrap(~race) + # facet by race 
-    coord_flip() # flip axes 
+    group_by(race) %>% # group by race
+    miss_var_summary() %>% # summary 
+    filter(n_miss != 0) %>% # show variables that include missing values
+    ggplot(aes(x = reorder(variable, pct_miss), y = pct_miss)) +
+        geom_col() +
+        facet_wrap(~race) + # facet by race 
+        coord_flip() # flip axes 
 
-ggsave("/home/jae/analyzing-racial-lived-experience/outputs/missing_rate.png", height = 8)
+ggsave(make_here("/home/jae/analyzing-racial-lived-experience/outputs/missing_rate.png"), height = 8)
 ```
 
 ### 2.2. Little's Test 
@@ -84,7 +92,7 @@ Now, let's formally test whether the data misses values by random. Here, I used 
 ```{r eval=FALSE, include=FALSE}
 
 little_test_result <- cleaned %>%
- LittleMCAR()
+    BaylorEdPsych::LittleMCAR()
 
 little_test_result$p.value
 
@@ -102,11 +110,11 @@ In this project, I used the `mice package` developed by [Stef van Buuren](https:
 ```{r}
 
 imp <- mice(cleaned,
-     seed = 1234, # for reproducibility
-     m = 5, # the number of imputations
-     maxit = 10, # the max numbe of iterations 
-     method = "pmm", # predictive mean method
-     print = FALSE) 
+    seed = 1234, # for reproducibility
+    m = 5, # the number of imputations
+    maxit = 10, # the max numbe of iterations 
+    method = "pmm", # predictive mean method
+    print = FALSE) 
 
 ```
 
@@ -182,6 +190,6 @@ paste("The number of missing values in the data after multiple imputation is", s
 
 ```{r}
 
-write.csv(imputed, "/home/jae/analyzing-racial-lived-experience/processed_data/imputed.csv")
+write.csv(imputed, make_here("/home/jae/analyzing-racial-lived-experience/processed_data/imputed.csv"))
 
 ```
