@@ -116,7 +116,7 @@ imp <- mice(scaled,
 
 - Another important task is deciding whether selecting one imputed piece of data over another is consequential. The `complete() function` pools the imputed data, but a question remains about which one should be selected. In this project, I created five imputed datasets. I built a simple regression model that examines associations between survey items related to the everyday challenge component of racial experience. The `pool() function` from the `mice package` is Donald Rubin’s rule test. The test “averages the estimates of the complete model” and “computes the total variance over the repeated analysis” (for more information, see [this function documentation](https://rdrr.io/cran/mice/man/pool.html)). The summary test result shows that the p-values for the regression coefficients are extremely small. Selecting one model over the other makes little difference for the model fit. Rubin’s rule test assumes that the distribution of the data follows a normal distribution. I checked this assumption using the Shapiro-Wilk test.
 
-```
+```r
          	estimate   std.error  statistic        df      p.value
 (Intercept) 0.06683443 0.01040490 6.4233596 23.693785 1.290565e-06
 q5_7_b      0.01727157 0.04561810 0.3786122  4.819998 7.210765e-01
