@@ -190,7 +190,7 @@ factor_df %>%
           labs(y= "Loading Strength", x = "Measures",
                title = "Factor Analysis Results",
                subtitle = "Only included Asian Americans",
-               caption = "Source: National Asian American Suvrey (2016)")
+               caption = "Source: National Asian American Survey (2016)")
 
 ggsave(make_here("/home/jae/analyzing-racial-lived-experience/outputs/factor_analysis.png"), height = 6, width = 8)
 
@@ -296,7 +296,7 @@ weighted_comparison %>%
         labs(title = "Three Dimensions of Lived Racial Experience",
              subtitle = "Only included Asian Americans",
              y= "Average score of survey responses", x = "Factor",
-             caption = "Source: National Asian American Suvrey (2016)",
+             caption = "Source: National Asian American Survey (2016)",
              col = "Weighted")
 
 ggsave(make_here("/home/jae/analyzing-racial-lived-experience/outputs/weighted_responses.png"), width = 10)

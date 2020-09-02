@@ -42,7 +42,7 @@ theme_set(theme_pubr())
 
 # Import 
 
-data <- read.dta(make_here("/home/jae/analyzing-racial-lived-experience/raw_data/naas16post-weighted.dta"))
+# data <- read.dta(make_here("/home/jae/analyzing-racial-lived-experience/raw_data/naas16post-weighted.dta"))
 
 # Participation 
 
