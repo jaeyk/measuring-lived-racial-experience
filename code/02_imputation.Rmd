@@ -9,13 +9,6 @@ output:
 
 # Setup 
 
-I tweaked the global option of the R Markdown to resize figures produced by ggplot2.
-
-```{r global_options, include=FALSE}
-knitr::opts_chunk$set(fig.width = 12, fig.height = 12, 
-                      echo = FALSE, warning = FALSE, message = FALSE) # global setting for enlarging image size
-```
-
 ```{r}
 if (!require("pacman")) install.packages("pacman")
 pacman::p_load(
@@ -45,7 +38,9 @@ Importing the file that we created in `01_data_cleaning.Rmd`.
 ```{r}
 # Import 
 
-cleaned <- read.csv(here("processed_data/cleaned.csv"))[,-1] # ignore the first column (=row numbers)
+cleaned <- read.csv(here("processed_data/cleaned.csv"))
+
+cleaned$X <- NULL
 ```
 
 # Examining missing responses
@@ -82,7 +77,8 @@ In this case, I took a multiple imputation approach. I recovered (imputed) missi
 In this project, I used the `mice package` developed by [Stef van Buuren](https://stefvanbuuren.name/).  The following code shows how the imputation model is set up. I comment on each argument to make it explicit how the model is set up. For instance, the `m argument` refers to the number of imputations, and I set it to `5`.
 
 ```{r}
-imp <- mice(cleaned,
+imp <- mice(
+  cleaned[,-1],
     seed = 1234, # for reproducibility
     m = 5, # the number of imputations
     maxit = 10, # the max number of iterations 
@@ -130,8 +126,6 @@ fit <- with(data = imp, expr = lm(q5_7_a ~ # visa delay
 ```{r}
 # Pooling them together
 comb_fit <- pool(fit)
-
-summary(comb_fit)
 ```
 
 ## Pooling results
@@ -147,5 +141,7 @@ paste("The number of missing values in the data after multiple imputation is", s
 # the imputed data
 
 ```{r}
+imputed$respid <- cleaned$respid
+
 write.csv(imputed, here("processed_data/imputed.csv"))
 ```

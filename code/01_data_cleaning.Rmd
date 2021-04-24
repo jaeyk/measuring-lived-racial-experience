@@ -51,7 +51,10 @@ We do not need every variable in the data for the data analysis. Let's select th
 df <- data %>%
     dplyr::select(
   
-        ## Covariates
+        # ID
+        respid,     
+       
+        # Covariates
         
         race, # race 
         pid4, # party ID
@@ -62,27 +65,27 @@ df <- data %>%
         forborn, # foreign born 
         citizen, # citizen 
         
-        ## DV: Identity and gorup formation outcomes
+        # DV: Identity and gorup formation outcomes
         
-        ### Linked fate (group consciousness)
+        ## Linked fate (group consciousness)
         
         q4_3, # other race linked fate agreement 
         
-        ### Identity 
+        ## Identity 
         
         q4_2a, # racial identity 
         q4_2d, # American identity 
         
-        ### What race means 
+        ## What race means 
         
         q4_5a, # common race 
         q4_5b, # common culture 
         q4_5c, # common econ interests
         q4_5d, # common political interests
         
-        ## IV: Racial lived experience measures
+        # IV: Racial lived experience measures
         
-        ### Micro-aggression
+        ## Micro-aggression
         
         q5_1_b, # service unfriendly 
         q5_1_c, # English proficiency 
@@ -92,7 +95,7 @@ df <- data %>%
         q5_1_h, # threatened  
         q5_1_i, # name mispronounced 
         
-        ### Discrimination 
+        ## Discrimination 
         
         q5_2_a, # promotion denied 
         q5_2_b, # unfairly fired 
@@ -101,7 +104,7 @@ df <- data %>%
         q5_2_e, # housing discrimination  
         q5_2_f, # neighbor hostility 
         
-        ### Everyday challenge
+        ## Everyday challenge
         
         q5_7_a, # visa delay 
         q5_7_b, # school quality 
@@ -133,6 +136,9 @@ map(df, unique)
 ## Capture the first number group from ordered survey responses 
 
 ```{r}
+# Turn res id from character into numeric vector 
+df$respid <- as.numeric(df$respid)
+
 recoded <- df %>%
     select_if(negate(is.character)) %>% # exclude the only character variable 
     apply(2, return_numeric) %>% # apply the function to every column in the subsetted data 
@@ -189,7 +195,6 @@ Rescale ordinal responses on the same scale (0-1).
 
 ```{r}
 # Re-scale ordinal responses
-
 rescaled <- recoded %>%
   dplyr::select(starts_with("q")) %>% # starts with q
   apply(2, scales::rescale) %>%

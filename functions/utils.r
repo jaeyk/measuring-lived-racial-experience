@@ -78,8 +78,6 @@ df_fa_weights <- function(fa_res) {
                 values_to = "Weights")
 }
 
-}
-
 # Calculate standard errors 
 std_mean <- function(x) sd(x)/sqrt(length(x))
 
