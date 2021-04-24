@@ -1,22 +1,19 @@
 ---
 title: "Data cleaning"
 author: "Jae Yeon Kim"
+date: "`r Sys.Date()`"
 output:
   html_document: 
     toc: true
     theme: united
 ---
 
-## 0. Setup 
+# Setup 
 
 ```{r}
-
-# Clean up the environment
-
-# rm(list = ls())
-
 if (!require("pacman")) install.packages("pacman")
 pacman::p_load(
+        purrr, # for functional programming
         foreign, # for importing stata files 
         tidyverse, # for the tidyverse framework 
         psych, # for psych tools  
@@ -25,37 +22,30 @@ pacman::p_load(
         ggpubr # for pub-ready themes 
 )
 
-devtools::install_github("jaeyk/makereproducible",
-        dependencies = TRUE)
-        
-library(makereproducible)
+source(here("functions", "utils.r"))
 
 # for publication-friendly theme 
 theme_set(theme_pubr())
 ```
 
-## 1. Importing files 
+# Importing files 
 
-- The data has 406 variables (the number of columns) and 6,448 observations (the number of rows for each column). Also, please note that the result of the `table() function` which shows that every survey participant participated the full survey. 
+The data has 406 variables (the number of columns) and 6,448 observations (the number of rows for each column). Also, please note that the `table() function` shows that every survey participant participated in the full survey. 
 
 ```{r}
-
 # Import 
 
-# data <- read.dta(make_here("/home/jae/analyzing-racial-lived-experience/raw_data/naas16post-weighted.dta"))
+data <- read.dta(here("raw_data/naas16post-weighted.dta"))
 
 # Participation 
-
 table(data$fullsurvey)
-
 ```
 
-## 2. Selecting variables 
+# Selecting variables 
 
-We do not need every variable in the data for the data analysis. Let's select the only ones that we will use. By doing so, I saved the memory by reducing the number of variables in the data from 406 to 40. It's also important to comment on these selected variables. As you can see below, most questions are named based on the order in which they appeared in the questionnaire. This is not especially informative, and it means that you will likely have to go back and forth between the codebook and the survey data. Of 40 variables, it appears that only 1 variable is integer, 1 variable is character, and the rest of them are factors.
+We do not need every variable in the data for the data analysis. Let's select the only ones that we will use. By doing so, I saved the memory by reducing the number of variables in the data from 406 to 40. It's also important to comment on these selected variables. As you can see below, most questions are named based on the order in which they appeared in the questionnaire. This is not informative, and it means that you will likely have to go back and forth between the codebook and the survey data. Of 40 variables, it appears that only one variable is an integer, one variable is a character, and the rest of them are factors.
 
 ```{r}
-
 # Select key variables 
 
 df <- data %>%
@@ -129,48 +119,35 @@ df <- data %>%
 
 # Glimpse
 glimpse(df)
-
 ```
 
-## 3. Recoding values 
+# Recoding values 
 
-### 3.1. Inspecting unique values 
+## Inspecting unique values 
 
 ```{r}
-
 # Check how values are coded 
-apply(df, 2, unique)
-
+map(df, unique)
 ```
 
-
-### 3.2. Capture the first number group from ordered survey responses 
+## Capture the first number group from ordered survey responses 
 
 ```{r}
-
-# Create a function for capturing the first number group from survey responses
-
-return_numeric <- function(x) {as.numeric(gsub("([0-9]+).*$", "\\1", x))} # regular expression
-
 recoded <- df %>%
     select_if(negate(is.character)) %>% # exclude the only character variable 
     apply(2, return_numeric) %>% # apply the function to every column in the subsetted data 
     as.data.frame() # turn it into a dataframe (otherwise, it's a matrix)
 
 # Rebind the character column (states)
-
 recoded$states <- df$s9a
-
 ```
 
-### 3.3. Some variables better treated as factors 
+## Some variables better treated as factors 
 
 Some variables are better treated as factors because they are categorical variables (e.g., race). 
 
 ```{r}
-
 # Race
-
 recoded$race <- recoded$race %>%
     as.character() %>%
     recode("1" = "AAPI",  # Originally Asian Americans 
@@ -184,71 +161,47 @@ recoded$race <- recoded$race %>%
     as.factor()
 
 # Party ID
-
 recoded$pid4 <- as.factor(recoded$pid4)
 
 # States 
-
 recoded$states <- as.factor(recoded$states)
 
 # Foreign born status 
-
 recoded$forborn <- as.factor(recoded$forborn)
 
 # Citizenship status 
-
 recoded$citizen <- as.factor(recoded$citizen)
-
 ```
 
-### 3.4. Replace non-response values (`9`, `88`, `99`, `8888`, `9999`) with `NA`s
+## Replace non-response values (`9`, `88`, `99`, `8888`, `9999`) with `NA`s
 
 ```{r}
-
 paste("What's the percentage of missing values in the data BEFORE replacing non-reponse values with NAs?:", mean(is.na(recoded)))
 
 recoded[recoded %in% c(9, 88, 99, 8888, 9999)] <- NA
 
 paste("What's the percentage of missing values in the data AFTER replacing non-reponse values with NAs?:", mean(is.na(recoded)))
-
 ```
 
-### 3.5. Rescale responses 
+## Rescale responses 
 
 Rescale ordinal responses on the same scale (0-1).
 
 ```{r}
-
-# Re-scale ordinal responses 
+# Re-scale ordinal responses
 
 rescaled <- recoded %>%
   dplyr::select(starts_with("q")) %>% # starts with q
   apply(2, scales::rescale) %>%
   as.data.frame() 
-
 ```
 
 Turn binary response variables (`Yes` or `No`) into dummy variables (`Yes` =  `1`. `No` = `0`) 
 
-```{r}
-
-# Function to recode binary responses 
-
-reverse_dummy <- function(data){
-    data[data == 1] <- 2
-    data[data == 0] <- 1
-    data[data == 2] <- 0
-    return(data)
-}
-
-```
-
-While we inspected how values are coded in the data using `the apply() function`, we found that the questions start wiht `q4_5`, `q5_1`, and `q5_2` contain binary responses.
+While we inspected how values are coded in the data using `the apply() function`, we found that the questions start with `q4_5`, `q5_1`, and `q5_2` contain binary responses.
 
 ```{r}
-
 # Recode binary responses
-
 rescaled1 <- rescaled %>% 
     dplyr::select(starts_with("q4_5")) %>%
     apply(2, reverse_dummy) %>%
@@ -264,28 +217,22 @@ rescaled3 <- rescaled %>%
     apply(2, reverse_dummy) %>%
     as.data.frame()
   
-# Combin binary recoded columns 
-
+# Combine binary recoded columns 
 bi_rescaled <- bind_cols(rescaled1, rescaled2, rescaled3)
 
 # Combine with the original column 
-
 rescaled <- rescaled %>%
     dplyr::select(-c(names(bi_rescaled))) %>%
     bind_cols(bi_rescaled)
 
 # The other columns 
-
 scaled <- recoded %>%
     dplyr::select(-starts_with("q")) %>%
     bind_cols(rescaled)
-
 ```
 
-## 4. Save the cleaned file 
+# Save the cleaned file 
 
 ```{r}
-
-write.csv(scaled, make_here("/home/jae/analyzing-racial-lived-experience/processed_data/cleaned.csv"))
-
+write.csv(scaled, here("processed_data/cleaned.csv"))
 ```
