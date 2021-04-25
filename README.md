@@ -12,3 +12,5 @@ In this section, I document how I preprocessed and analyzed the 2016 National As
 ### 02_Imputing Data [[02_imputation.Rmd](https://github.com/jaeyk/measuring-lived-racial-experience/blob/master/code/02_imputation.Rmd)]
 
 ### 03_Factor analysis [[03_factor_analysis.Rmd](https://github.com/jaeyk/measuring-lived-racial-experience/blob/master/code/03_factor_analysis.Rmd)]
+
+### 04_Regression analysis [[04_reg_analysis.Rmd](https://github.com/jaeyk/measuring-lived-racial-experience/blob/master/code/04_reg_analysis.Rmd)]
