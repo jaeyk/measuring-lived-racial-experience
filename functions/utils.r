@@ -180,7 +180,8 @@ viz_ols <- function(df, dv_type) {
                  x = "Race",
                  y = "Estimate",
                  color = "IVs",
-                 caption = "Source: National Asian American Survey (2016)")
+                 caption = "Source: National Asian American Survey (2016)") +
+            geom_hline(yintercept = c(0), linetype = "dotted")
     
 }
 
