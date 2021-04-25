@@ -20,7 +20,9 @@ pacman::p_load(
         ggthemes, # for fancy ggplot themes
         here, # for self-contained projects
         ggpubr, # for pub-ready themes 
-        glue # pasting string and objects
+        glue, # pasting string and objects
+        scales, # changing scales 
+        patchwork # putting ggplots together
 )
 
 source(here("functions", "utils.r"))
@@ -124,6 +126,7 @@ df <- df %>%
          forborn = as.factor(forborn),
          citizen = as.factor(citizen))
 ```
+
 ## Replace non-response values (`9`, `88`, `99`, `8888`, `9999`) with `NA`s
 
 ```{r}
@@ -146,6 +149,47 @@ rescaled <- df %>%
 
 ```{r}
 combined <- bind_cols(rescaled, df %>% select(-where(is.numeric)))
+```
+
+# Descriptive statistics 
+
+```{r}
+d1 <- combined %>%
+  pivot_longer(matches("micro"),
+               names_to = "Micro",
+               values_to = "Score") %>%
+  mutate(micro_binary = if_else(Score != 0, 1, 0)) %>%
+  group_by(race) %>%
+  summarise(mean = mean(micro_binary, na.rm = TRUE)) %>%
+  filter(race != "Multiracial") %>% 
+  ggplot(aes(x = fct_reorder(race, mean), y = mean)) +
+    geom_col() +
+    labs(x = "Race", 
+         y = "Percentage",
+         title = "Micro-aggression",
+         subtitle = "Percentage of Those Responded 'Yes' To At Least One Related Question",
+         caption = "Source: National Asian American Survey (2016)") +
+    scale_y_continuous(labels = scales::percent)
+
+d2 <- combined %>%
+  pivot_longer(matches("disc"),
+               names_to = "Disc",
+               values_to = "Score") %>%
+  mutate(disc_binary = if_else(Score != 0, 1, 0)) %>%
+  group_by(race) %>%
+  summarise(mean = mean(disc_binary, na.rm = TRUE)) %>%
+  filter(race != "Multiracial") %>% 
+  ggplot(aes(x = fct_reorder(race, mean), y = mean)) +
+    geom_col() +
+    labs(x = "Race", 
+         y = "Percentage",
+         title = "Discrimination",
+         subtitle = "Percentage of Those Responded 'Yes' To At Least One Related Question",
+         caption = "Source: National Asian American Survey (2016)") +
+    scale_y_continuous(labels = scales::percent)
+
+d1 + d2
+ggsave(here("outputs, desc_comp.png"))
 ```
 
 # Save the cleaned file 
