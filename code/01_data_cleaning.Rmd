@@ -19,7 +19,8 @@ pacman::p_load(
         psych, # for psych tools  
         ggthemes, # for fancy ggplot themes
         here, # for self-contained projects
-        ggpubr # for pub-ready themes 
+        ggpubr, # for pub-ready themes 
+        glue # pasting string and objects
 )
 
 source(here("functions", "utils.r"))
@@ -28,125 +29,75 @@ source(here("functions", "utils.r"))
 theme_set(theme_pubr())
 ```
 
-# Importing files 
+# Import files 
 
 The data has 406 variables (the number of columns) and 6,448 observations (the number of rows for each column). Also, please note that the `table() function` shows that every survey participant participated in the full survey. 
 
 ```{r}
 # Import 
 
-data <- read.dta(here("raw_data/naas16post-weighted.dta"))
+data <- read.dta(here::here("raw_data","naas16post-weighted-recoded.dta"))
 
 # Participation 
 table(data$fullsurvey)
 ```
 
-# Selecting variables 
-
-We do not need every variable in the data for the data analysis. Let's select the only ones that we will use. By doing so, I saved the memory by reducing the number of variables in the data from 406 to 40. It's also important to comment on these selected variables. As you can see below, most questions are named based on the order in which they appeared in the questionnaire. This is not informative, and it means that you will likely have to go back and forth between the codebook and the survey data. Of 40 variables, it appears that only one variable is an integer, one variable is a character, and the rest of them are factors.
+# Turn factors into numbers
 
 ```{r}
-# Select key variables 
+# Turn factors into numbers 
+data <- data %>%
+  mutate(across(where(is.factor), compose(parse_number, as.character)))
 
-df <- data %>%
+# There are 569 variables 
+ncol(data) 
+
+names(data)
+```
+
+# Select and rename variables 
+
+```{r}
+# Create each dataframe
+co_vars <- data %>%
     dplyr::select(
   
         # ID
         respid,     
        
         # Covariates
-        
+        male, # male 
+        age, # age 
+        educout_degree, # edu 
+        ownhome, # home ownership 
         race, # race 
-        pid4, # party ID
-        q10_2b, # education level 
+        democrat, # democrat
+        republican, # republican
         q10_15, # income level
-        q10_18, # age
-        s9a, # states 
+        statesmp, # states 
         forborn, # foreign born 
-        citizen, # citizen 
-        
-        # DV: Identity and gorup formation outcomes
-        
-        ## Linked fate (group consciousness)
-        
-        q4_3, # other race linked fate agreement 
-        
-        ## Identity 
-        
-        q4_2a, # racial identity 
-        q4_2d, # American identity 
-        
-        ## What race means 
-        
-        q4_5a, # common race 
-        q4_5b, # common culture 
-        q4_5c, # common econ interests
-        q4_5d, # common political interests
-        
-        # IV: Racial lived experience measures
-        
-        ## Micro-aggression
-        
-        q5_1_b, # service unfriendly 
-        q5_1_c, # English proficiency 
-        q5_1_d, # afraid of you 
-        q5_1_e, # thought dishonest 
-        q5_1_g, # insulted 
-        q5_1_h, # threatened  
-        q5_1_i, # name mispronounced 
-        
-        ## Discrimination 
-        
-        q5_2_a, # promotion denied 
-        q5_2_b, # unfairly fired 
-        q5_2_c, # job rejected 
-        q5_2_d, # police brutality  
-        q5_2_e, # housing discrimination  
-        q5_2_f, # neighbor hostility 
-        
-        ## Everyday challenge
-        
-        q5_7_a, # visa delay 
-        q5_7_b, # school quality 
-        q5_7_c, # school bullied 
-        q5_7_d, # college affordability 
-        q5_7_e, # elderly care 
-        q5_7_f, # medical care
-        q5_7_g, # rent affordability 
-        q5_7_h, # college debt
-        q5_7_i, # medical debt 
-        q5_7_j, # card debt
-        q5_7_k, # childcare 
-        q5_7_l # little saving 
-    ) 
+        citizen) # citizen
 
-# Glimpse
+co_vars <- co_vars %>%
+  rename("income" = "q10_15",
+         "states" = "statesmp")
+
+mar_vars <- data %>% dplyr::select(matches("micro|discrim"))
+
+id_vars <- data %>% dplyr::select(matches("id_|id2_"))
+
+linked_vars <- data %>% dplyr::select(matches("linked"))
+
+comm_vars <- data %>% dplyr::select(matches("comm"))
+
+# Bind them together
+df <- reduce(list(co_vars, mar_vars, id_vars, linked_vars, comm_vars), bind_cols)
+
+# Inspect
 glimpse(df)
 ```
 
-# Recoding values 
-
-## Inspecting unique values 
-
-```{r}
-# Check how values are coded 
-map(df, unique)
-```
-
-## Capture the first number group from ordered survey responses 
-
-```{r}
-# Turn res id from character into numeric vector 
-df$respid <- as.numeric(df$respid)
-
-recoded <- df %>%
-    select_if(negate(is.character)) %>% # exclude the only character variable 
-    apply(2, return_numeric) %>% # apply the function to every column in the subsetted data 
-    as.data.frame() # turn it into a dataframe (otherwise, it's a matrix)
-
-# Rebind the character column (states)
-recoded$states <- df$s9a
-```
+# Recode values 
 
 ## Some variables better treated as factors 
 
@@ -154,7 +105,7 @@ Some variables are better treated as factors because they are categorical variab
 
 ```{r}
 # Race
-recoded$race <- recoded$race %>%
+df$race <- df$race %>%
     as.character() %>%
     recode("1" = "AAPI",  # Originally Asian Americans 
            "2" = "AAPI",  # Originally Pacific Islanders
@@ -162,31 +113,23 @@ recoded$race <- recoded$race %>%
            "4" = "Black",
            "5" = "Black", # Originally African American
            "6" = "Latino",
-           "7" = "Native American",
            "9" = "Multiracial") %>%
     as.factor()
 
-# Party ID
-recoded$pid4 <- as.factor(recoded$pid4)
-
-# States 
-recoded$states <- as.factor(recoded$states)
-
-# Foreign born status 
-recoded$forborn <- as.factor(recoded$forborn)
-
-# Citizenship status 
-recoded$citizen <- as.factor(recoded$citizen)
+df <- df %>%
+  mutate(race = as.factor(race),
+         democrat = as.factor(democrat),
+         republican = as.factor(republican),
+         states = as.factor(states),
+         forborn = as.factor(forborn),
+         citizen = as.factor(citizen))
 ```
-
 ## Replace non-response values (`9`, `88`, `99`, `8888`, `9999`) with `NA`s
 
 ```{r}
-paste("What's the percentage of missing values in the data BEFORE replacing non-reponse values with NAs?:", mean(is.na(recoded)))
+df[df %in% c(9, 88, 99, 8888, 9999)] <- NA
 
-recoded[recoded %in% c(9, 88, 99, 8888, 9999)] <- NA
-
-paste("What's the percentage of missing values in the data AFTER replacing non-reponse values with NAs?:", mean(is.na(recoded)))
+glue("What's the percentage of missing values in the data AFTER replacing non-reponse values with NAs?: {(mean(is.na(df)) %>% round(2)) * 100}%")
 ```
 
 ## Rescale responses 
@@ -195,49 +138,18 @@ Rescale ordinal responses on the same scale (0-1).
 
 ```{r}
 # Re-scale ordinal responses
-rescaled <- recoded %>%
-  dplyr::select(starts_with("q")) %>% # starts with q
+rescaled <- df %>%
+  dplyr::select(where(is.numeric)) %>% # starts with q
   apply(2, scales::rescale) %>%
   as.data.frame() 
 ```
 
-Turn binary response variables (`Yes` or `No`) into dummy variables (`Yes` =  `1`. `No` = `0`) 
-
-While we inspected how values are coded in the data using `the apply() function`, we found that the questions start with `q4_5`, `q5_1`, and `q5_2` contain binary responses.
-
 ```{r}
-# Recode binary responses
-rescaled1 <- rescaled %>% 
-    dplyr::select(starts_with("q4_5")) %>%
-    apply(2, reverse_dummy) %>%
-    as.data.frame()
-
-rescaled2 <- rescaled %>% 
-    dplyr::select(starts_with("q5_1")) %>%
-    apply(2, reverse_dummy) %>%
-    as.data.frame()
-
-rescaled3 <- rescaled %>% 
-    dplyr::select(starts_with("q5_2")) %>%
-    apply(2, reverse_dummy) %>%
-    as.data.frame()
-  
-# Combine binary recoded columns 
-bi_rescaled <- bind_cols(rescaled1, rescaled2, rescaled3)
-
-# Combine with the original column 
-rescaled <- rescaled %>%
-    dplyr::select(-c(names(bi_rescaled))) %>%
-    bind_cols(bi_rescaled)
-
-# The other columns 
-scaled <- recoded %>%
-    dplyr::select(-starts_with("q")) %>%
-    bind_cols(rescaled)
+combined <- bind_cols(rescaled, df %>% select(-where(is.numeric)))
 ```
 
 # Save the cleaned file 
 
 ```{r}
-write.csv(scaled, here("processed_data/cleaned.csv"))
+write.csv(combined, here("processed_data/cleaned.csv"))
 ```

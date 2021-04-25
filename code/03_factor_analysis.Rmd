@@ -25,14 +25,15 @@ pacman::p_load(
         jantior # for additional data cleaning 
 )
 
-# for publication-friendly theme 
-theme_set(theme_pubr())
-
-source(here("functions", "utils.r"))
 
 # Prefer select from dplyr 
 conflict_prefer("select", "dplyr")
 conflict_prefer("filter", "dplyr")
+
+# for publication-friendly theme 
+theme_set(theme_pubr())
+
+source(here("functions", "utils.r"))
 ```
 
 # Importing files 
@@ -40,7 +41,7 @@ conflict_prefer("filter", "dplyr")
 Importing the file that we created in `02_imputation.Rmd`.
 
 ```{r}
-imputed <- read.csv("/home/jae/analyzing-racial-lived-experience/processed_data/imputed.csv")[,-1]
+imputed <- read.csv(here("processed_data/imputed.csv"))[,-1]
 ```
 
 
@@ -50,55 +51,9 @@ I selected the variables related to the multi-dimensions of lived racial experie
 
 ```{r}
 # Selecting variables 
-vars <- imputed %>%
-    select(
-                
-      # discrimination  
-      q5_2_a, q5_2_b, q5_2_c, q5_2_d, q5_2_e, q5_2_f, 
-                  
-      # everyday challenge 
-      # q5_7_a, q5_7_b, q5_7_c, q5_7_d, q5_7_e, q5_7_f, q5_7_g, q5_7_h, q5_7_i, q5_7_j, q5_7_k, q5_7_l,
-      
-      # micro-aggression
-      q5_1_b, q5_1_c, q5_1_d, q5_1_e, q5_1_g, q5_1_h, q5_1_i
-      )
-```
-
-```{r}
-# Renaming these variables 
-vars <- vars %>%
-    rename(
-        
-        # discrimination 
-        promotion_denied = q5_2_a,
-        unfairly_fired = q5_2_b,
-        job_rejected = q5_2_c,
-        police_brutality = q5_2_d,
-        housing_discrimination = q5_2_e,
-        neighbor_hostility = q5_2_f,
-        
-        # everyday challenge
-        # visa_delay = q5_7_a,
-        # school_quality = q5_7_b,
-        # school_bullied = q5_7_c,
-        # college_affordability = q5_7_d,
-        # elderly_care = q5_7_e,
-        # medical_care = q5_7_f,
-        # rent_affordability = q5_7_g,
-        # college_debt = q5_7_h,
-        # medical_debt = q5_7_i,
-        # card_debt = q5_7_j,
-        # child_care = q5_7_k,
-        # little_saving = q5_7_l,
-        
-        # micro-agression
-        service_unfriendly = q5_1_b,
-        english_proficiency = q5_1_c,
-        afraid_of_you = q5_1_d,
-        thought_dishonest = q5_1_e,
-        insulted = q5_1_g,
-        threatened = q5_1_h,
-        name_mispronounced = q5_1_i)
+vars <- imputed %>% 
+  select(matches("micro|discrim")) %>%
+  select(-matches("index"))
 ```
 
 ## 3. Factor analysis 
@@ -121,7 +76,7 @@ fa.parallel(vars,
 
 ### 3.2. Factor analysis 
 
-- After validating the `nfactors = 3` assumption, I ran the factor analysis using the observed data. I assume that these factors are orthogonal by setting the `rotate  = ‘oblimin’.` For interpretation, this means the factors show the correlations between question items and factors (for more information, see this [link](https://psu-psychology.github.io/psy-597-SEM/06_factor_models/factor_models.html#looking-under-the-hood-of-the-fa-model)). 
+- After validating the `nfactors = 2` assumption, I ran the factor analysis using the observed data. I assume that these factors are orthogonal by setting the `rotate  = ‘oblimin’.` For interpretation, this means the factors show the correlations between question items and factors (for more information, see this [link](https://psu-psychology.github.io/psy-597-SEM/06_factor_models/factor_models.html#looking-under-the-hood-of-the-fa-model)). 
 
 ```{r}
 # Add grouping variable 
@@ -209,15 +164,18 @@ final_base <- vars_nested %>%
 
 # Create composite variables 
 disc <- final_base %>% 
-  filter(Measures %in% c("promotion_denied", "unfairly_fired", "job_rejected", "police_brutality", "housing_discrimination", "neighbor_hostility")) %>%
+  filter(str_detect(Measures, "disc")) %>%
   filter(Factor == "Discrimination") 
      
 microagg <- final_base %>% 
-  filter(Measures %in% c("service_unfriendly", "english_proficiency", "afraid_of_you", "thought_dishonest", "insulted", "threatened", "name_mispronounced")) %>%
+  filter(str_detect(Measures, "micro")) %>%
   filter(Factor != "Discrimination") 
 
 final_base <- bind_rows(disc, microagg)
+```
 
+
+```{r}
 new_vars <- left_join(vars %>%
   pivot_longer(c(1:13), 
                names_to = "Measures", 
@@ -229,40 +187,17 @@ new_vars <- left_join(vars %>%
   dplyr::distinct_all() %>%
   pivot_wider(names_from = "Factor",
               values_from = "mean")
+```
 
-# Remove old variables 
-rm_imputed <- imputed %>%
-    select(-c(
-                
-      # discrimination  
-      q5_2_a, q5_2_b, q5_2_c, q5_2_d, q5_2_e, q5_2_f, 
-      
-      # micro-aggression
-      q5_1_b, q5_1_c, q5_1_d, q5_1_e, q5_1_g, q5_1_h, q5_1_i
-      
-    )
-      )
+
+```{r}
+# Create a complete dataframe 
+full_vars <- left_join(vars, imputed) 
 
 # Add new variables
-augmented_df <- left_join(rm_imputed, new_vars)
+augmented_df <- left_join(full_vars, new_vars)
 
 # Final cleanup 
-augmented_df <- augmented_df %>%
-  rename("edu_level" = "q10_2b",
-         "income_level" = "q10_15",
-         "age" = "q10_18",
-         "linked_fate" = "q4_3",
-         "racial_id" = "q4_2a", 
-         "american_id" = "q4_2d",
-         "common_race" = "q4_5a",
-         "common_culture" = "q4_5b",
-         "common_econ" = "q4_5c",
-         "common_pol" = "q4_5d",
-         "pid" = "pid4") %>%
-  select(-matches("q5_")) %>%
-  mutate(forborn = if_else(citizen == 1, 0, 1)) %>%
-  select(-c("citizen", "respid"))
-
 augmented_df <- janitor::clean_names(augmented_df)
 
 write.csv(augmented_df, here("processed_data", "augmented_df.csv"))

@@ -78,7 +78,7 @@ In this project, I used the `mice package` developed by [Stef van Buuren](https:
 
 ```{r}
 imp <- mice(
-  cleaned[,-1],
+  cleaned %>% select(-respid),
     seed = 1234, # for reproducibility
     m = 5, # the number of imputations
     maxit = 10, # the max number of iterations 
@@ -95,39 +95,6 @@ The goal of imputation is to create imputed values that are as close as possible
 ```{r}
 densityplot(imp, layout = c(1, 3))
 ```
-
-### Rubin's rule test 
-
-Another critical test is deciding whether selecting one imputed piece of data over another is consequential. The `complete() function` pools the imputed data, but a question remains about which one should be selected. In this project, I created five imputed datasets. I built a simple regression model that examines associations between survey items related to the everyday challenge component of the racial experience. The `pool() function` from the `mice package` is Donald Rubin’s rule test. The test “averages the estimates of the complete model” and “computes the total variance over the repeated analysis” (for more information, see [this function documentation](https://rdrr.io/cran/mice/man/pool.html)). The summary test result shows that the p-values for the regression coefficients are extremely small. Selecting one model over the other makes little difference for the model fit (=little within imputation variance). Rubin’s rule test assumes that the distribution of the data follows a normal distribution. I checked this assumption using the Shapiro-Wilk test.  
-
-```{r}
-# Select test variables from the original data 
-test_vars <- imp$data %>%
-  dplyr::select(q5_7_a, q5_7_b, q5_7_c, q5_7_d, q5_7_e, q5_7_f, q5_7_g, q5_7_h, q5_7_i, q5_7_j, q5_7_k, q5_7_l)
-
-# Shapiro test 
-apply(test_vars, 2, shapiro.test)
-
-# Fitting the data to the OLS regression model
-fit <- with(data = imp, expr = lm(q5_7_a ~ # visa delay 
-    q5_7_b + # school quality 
-    q5_7_c + # school bullied 
-    q5_7_d + # college affordability 
-    q5_7_e + # elderly care 
-    q5_7_f + # medical care
-    q5_7_g + # rent affordability 
-    q5_7_h + # college debt
-    q5_7_i + # medical debt 
-    q5_7_j + # card debt
-    q5_7_k + # childcare 
-    q5_7_l)) # little saving  
-```
-
-```{r}
-# Pooling them together
-comb_fit <- pool(fit)
-```
-
 ## Pooling results
 
 ```{r}

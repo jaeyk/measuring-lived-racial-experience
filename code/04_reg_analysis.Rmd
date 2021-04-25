@@ -1,0 +1,131 @@
+---
+title: "Regression analysis"
+author: "Jae Yeon Kim"
+output:
+  html_document: 
+    toc: true
+    theme: united
+---
+
+#. Setup 
+
+```{r}
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load(
+        tidyverse, # for the tidyverse framework 
+        purrr, # for functional programming
+        glue, # putting strings and objects together
+        patchwork, # putting ggplots together 
+        sjPlot, # for visualizing regressions
+        ggthemes, # for fancy ggplot themes
+        conflicted, # for resolving conflicting functions
+        ggthemes, # for fancy ggplot themes
+        here, # for self-contained projects
+        ggpubr, # for pub-ready themes
+        estimatr # stat modeling
+)
+
+# Prefer select from dplyr 
+conflict_prefer("select", "dplyr")
+conflict_prefer("filter", "dplyr")
+
+# for publication-friendly theme 
+theme_set(theme_pubr(base_size = 12))
+
+source(here("functions", "utils.r"))
+```
+
+# Importing files 
+
+```{r}
+df <- read.csv(here("processed_data", "augmented_df.csv"))[,-1]
+```
+
+# Regression analysis
+
+## Create a nested dataframe 
+
+```{r}
+nested <- df %>%
+  group_by(race) %>%
+  nest()
+```
+
+## Run regression models 
+
+Run model based on different dependent variables.
+
+```{r}
+
+# Linked fate
+lf_models <- nested %>%
+  mutate(
+    race_mls = map(data, ~ols(., "linkedfate_race")),
+    ethnic_mls = map(data, ~ols(., "linkedfate_ethnic"))
+    )
+
+comm_models1 <- nested %>%
+  mutate( 
+    commrace = map(data, ~ols(., "commrace")),
+    commcult = map(data, ~ols(.,"commcult")),
+    commecon = map(data, ~ols(., "commecon")),      commpol = map(data, ~ols(.,"commpol"))
+  )
+
+comm_models2 <- nested %>%
+  mutate(
+    commblacks = map(data, ~ols(., "commblacks")),
+    commlatinos = map(data, ~ols(., "commlatinos")), 
+    commwhites = map(data, ~ols(., "commwhites")),
+    commasians = map(data, ~ols(.,"commasians"))
+    )
+
+id_models <-  nested %>%
+  mutate(
+    commblacks = map(data, ~ols(., "commblacks")),
+    commlatinos = map(data, ~ols(., "commlatinos")), 
+    commwhites = map(data, ~ols(., "commwhites")),
+    commasians = map(data, ~ols(.,"commasians"))
+    )
+```
+
+## Bind results 
+
+```{r}
+lf_res <- reduce(list(unnest_model(lf_models, "race_mls", "Race"),
+unnest_model(lf_models %>% filter(race %in% c("AAPI", "Latino")), "ethnic_mls", "Ethnic")), full_join)
+
+comm_res1 <- reduce(list(
+  unnest_model(comm_models1, "commrace", "Racial"),
+  unnest_model(comm_models1, "commcult", "Cultural"), 
+  unnest_model(comm_models1, "commecon", "Economic"),
+  unnest_model(comm_models1, "commpol", "Political")
+),
+  full_join)
+
+comm_res2 <- reduce(list(
+  unnest_model(comm_models2, "commblacks", "With Blacks"),
+  unnest_model(comm_models2, "commlatinos", "With Latinos"), 
+  unnest_model(comm_models2, "commwhites", "With Whites")
+),
+  full_join)
+```
+
+## Visualize outputs 
+
+```{r}
+lf_res %>%
+  viz_ols("Linked fate")
+
+ggsave(here("outputs", "lf_res.png"), width = 8)
+
+comm_res1 %>%
+  viz_ols("Common fate")
+
+ggsave(here("outputs", "comm_res1.png"), width = 8)
+
+comm_res2 %>%
+  viz_ols("Common fate")
+
+ggsave(here("outputs", "comm_res2.png"), width = 8)
+```
+

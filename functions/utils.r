@@ -44,17 +44,8 @@ df_fa_loadings <- function(fa_res){
 # Visualize factor loadings 
 visualize_fa_loadings <- function(df){
     
-    # The order of the variables 
-    var_order <- c(
-        
-        # discrimination
-        "promotion_denied", "unfairly_fired", "job_rejected", "police_brutality", "housing_discrimination", "neighbor_hostility", 
-                   
-        # micro-aggression
-         "service_unfriendly", "english_proficiency", "afraid_of_you", "thought_dishonest", "insulted", "threatened", "name_mispronounced")
-    
     df %>%
-        ggplot(aes(x = factor(Measures, levels = var_order), y = Loading, fill = Loading)) +
+        ggplot(aes(x = Measures, y = Loading, fill = Loading)) +
             geom_col() +
             coord_flip() +
             scale_fill_gradient2(name = "Loading",
@@ -86,7 +77,7 @@ extract_weights <- function(nested, var_list, var_condition){
     nested %>%
         select(race, fa_weights) %>%
         unnest(fa_weights) %>%
-        filter(Measures %in% var_list) %>%
+        filter(str_detect(Measures, var_list)) %>%
         filter(Factor == var_condition) %>%
         rename("Variables" = "Measures") %>%
         select(-Factor)
@@ -117,9 +108,9 @@ summarize_weighted_scores <- function(df) {
 # Split, summarise, then bind
 group_summarize <- function(base, type) {
 
-    disc <- base %>% filter(Variables %in% c("promotion_denied", "unfairly_fired", "job_rejected", "police_brutality", "housing_discrimination", "neighbor_hostility"))
+    disc <- base %>% filter(str_detect(Variables, "disc"))
 
-    microagg <- base %>% filter(Variables %in% c("service_unfriendly", "english_proficiency", "afraid_of_you", "thought_dishonest", "insulted", "threatened", "name_mispronounced"))
+    microagg <- base %>% filter(str_detect(Variables, "micro"))
 
     bind_rows(
         disc %>% ungroup(Variables) %>% 
@@ -139,13 +130,13 @@ group_summarize <- function(base, type) {
 
 group_summarize_weight <- function(base, vars_nested, type) {
     
-    disc <- base %>% filter(Variables %in% c("promotion_denied", "unfairly_fired", "job_rejected", "police_brutality", "housing_discrimination", "neighbor_hostility"))
+    disc <- base %>% filter(str_detect(Variables, "disc"))
     
-    microagg <- base %>% filter(Variables %in% c("service_unfriendly", "english_proficiency", "afraid_of_you", "thought_dishonest", "insulted", "threatened", "name_mispronounced"))
+    microagg <- base %>% filter(str_detect(Variables, "micro"))
     
-    disc_weighted <- extract_weights(vars_nested, c("promotion_denied", "unfairly_fired", "job_rejected", "police_brutality", "housing_discrimination", "neighbor_hostility"), "Discrimination")
+    disc_weighted <- extract_weights(vars_nested, "disc", "Discrimination")
     
-    microagg_weighted <- extract_weights(vars_nested, c("service_unfriendly", "english_proficiency", "afraid_of_you", "thought_dishonest", "insulted", "threatened", "name_mispronounced"), "Micro-aggression")
+    microagg_weighted <- extract_weights(vars_nested, "micro", "Micro-aggression")
     
     disc <- left_join(disc, disc_weighted)
     microagg <- left_join(microagg, microagg_weighted) 
@@ -164,4 +155,43 @@ group_summarize_weight <- function(base, vars_nested, type) {
                 dimension = "Micro-aggression",
                 Type = type
             ))
+}
+
+# Build regression models 
+ols <- function(df, dv){
+    
+    lm_out <- lm_robust(df[[dv]] ~ discrimination + micro_aggression + age + educout_degree + income + ownhome + male + forborn + democrat + republican, data = df)
+    
+    tidy(lm_out, conf.int = TRUE)
+}
+
+
+# Visualize regression models 
+viz_ols <- function(df, dv_type) {
+    
+    df %>%
+        ggplot(aes(x = race, y = estimate, ymax = conf.high, ymin = conf.low, color = term)) +
+            geom_pointrange(size = 1) +
+            coord_flip() +
+            facet_wrap(~group) +
+            scale_color_discrete(labels = c("Discrimination", "Micro-aggression")) +
+            labs(title = glue("DV: {dv_type}"),
+                 subtitle = glue("Covariates: Age, Education, Income, Homeownership, Gender, Foreign born status, Partisanship"),
+                 x = "Race",
+                 y = "Estimate",
+                 color = "IVs",
+                 caption = "Source: National Asian American Survey (2016)")
+    
+}
+
+# Unnest model results 
+unnest_model <- function(df, nested_obj, group_label) {
+    
+    df %>%
+        dplyr::select("race", {{nested_obj}}) %>%
+        unnest({{nested_obj}}) %>%
+        filter(str_detect(term, "disc|micro")) %>%
+        filter(race != "Multiracial") %>%
+        mutate(group = group_label)
+    
 }
