@@ -189,7 +189,7 @@ d2 <- combined %>%
     scale_y_continuous(labels = scales::percent)
 
 d1 + d2
-ggsave(here("outputs, desc_comp.png"))
+ggsave(here("outputs", " desc_comp.png"))
 ```
 
 # Save the cleaned file 
