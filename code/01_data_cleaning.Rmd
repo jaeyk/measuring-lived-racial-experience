@@ -167,8 +167,9 @@ d1 <- combined %>%
     labs(x = "Race", 
          y = "Percentage",
          title = "Micro-aggression",
-         subtitle = "Percentage of Those Responded 'Yes' To At Least One Related Question",
-         caption = "Source: National Asian American Survey (2016)") +
+         subtitle = glue("Percentage of Those Responded 'Yes' 
+                         To At Least One Related Question")) +
+         #caption = "Source: National Asian American Survey (2016)") +
     scale_y_continuous(labels = scales::percent)
 
 d2 <- combined %>%
@@ -182,14 +183,16 @@ d2 <- combined %>%
   ggplot(aes(x = fct_reorder(race, mean), y = mean)) +
     geom_col() +
     labs(x = "Race", 
-         y = "Percentage",
+         y = "",
          title = "Discrimination",
-         subtitle = "Percentage of Those Responded 'Yes' To At Least One Related Question",
-         caption = "Source: National Asian American Survey (2016)") +
+         subtitle = glue("Percentage of Those Responded 'Yes' 
+                         To At Least One Related Question"),
+         caption = "Source: National Asian American Survey (2016)"
+         ) +
     scale_y_continuous(labels = scales::percent)
 
 d1 + d2
-ggsave(here("outputs", " desc_comp.png"))
+ggsave(here("outputs", "desc_comp.png"))
 ```
 
 # Save the cleaned file 

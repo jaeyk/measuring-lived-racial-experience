@@ -63,8 +63,9 @@ cleaned %>%
     ggplot(aes(x = reorder(variable, pct_miss), y = pct_miss)) +
         geom_col() +
         facet_wrap(~race) + # facet by race 
-        coord_flip() # flip axes 
-
+        coord_flip() + # flip axes 
+        labs(x = "Variables",
+             y = "Missing rate (%)")
 ggsave(here("outputs/missing_rate.png"), height = 8)
 ```
 

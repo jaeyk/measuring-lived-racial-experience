@@ -105,9 +105,29 @@ comm_res1 <- reduce(list(
 comm_res2 <- reduce(list(
   unnest_model(comm_models2, "commblacks", "With Blacks"),
   unnest_model(comm_models2, "commlatinos", "With Latinos"), 
-  unnest_model(comm_models2, "commwhites", "With Whites")
+  unnest_model(comm_models2, "commwhites", "With Whites"),
+  unnest_model(comm_models2, "commasians", "With Asians")
 ),
   full_join)
+
+# Remove cases, which were entirely imputed 
+comm_res2 <- comm_res2 %>%
+  filter(!(str_detect(race, "AAPI") &  str_detect(group, "Asian"))) %>%
+  filter(!(str_detect(race, "White") &
+str_detect(group, "White"))) %>%
+  filter(!(str_detect(race, "Black") &
+str_detect(group, "Black"))) %>%
+  filter(!(str_detect(race, "Latino") &
+str_detect(group, "Latino")))
+
+id_res <- reduce(list(unnest_model(id_models, "commasians", "AAPI"),
+     unnest_model(id_models, "commwhites", "White"),
+     unnest_model(id_models, "commblacks", "Black"),
+     unnest_model(id_models, "commlatinos", "Latino")), full_join)
+
+# Select relevant cases 
+id_res <- id_res %>%
+   filter(race == group)
 ```
 
 ## Visualize outputs 
@@ -118,8 +138,13 @@ lf_res %>%
 
 ggsave(here("outputs", "lf_res.png"), width = 8)
 
+id_res %>%
+  viz_ols_no_facet("Racial identity salience")
+
+ggsave(here("outputs", "id_res.png"), width = 8)
+
 comm_res1 %>%
-  viz_ols("Common fate")
+  viz_ols("Common factors")
 
 ggsave(here("outputs", "comm_res1.png"), width = 8)
 

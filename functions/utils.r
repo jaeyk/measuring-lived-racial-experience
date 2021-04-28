@@ -185,6 +185,23 @@ viz_ols <- function(df, dv_type) {
     
 }
 
+viz_ols_no_facet <- function(df, dv_type) {
+    
+    df %>%
+        ggplot(aes(x = race, y = estimate, ymax = conf.high, ymin = conf.low, color = term)) +
+        geom_pointrange(size = 1) +
+        coord_flip() +
+        scale_color_discrete(labels = c("Discrimination", "Micro-aggression")) +
+        labs(title = glue("DV: {dv_type}"),
+             subtitle = glue("Covariates: Age, Education, Income, Homeownership, Gender, Foreign born status, Partisanship"),
+             x = "Race",
+             y = "Estimate",
+             color = "IVs",
+             caption = "Source: National Asian American Survey (2016)") +
+        geom_hline(yintercept = c(0), linetype = "dotted")
+    
+}
+
 # Unnest model results 
 unnest_model <- function(df, nested_obj, group_label) {
     
