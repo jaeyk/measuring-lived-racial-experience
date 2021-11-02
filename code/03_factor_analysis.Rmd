@@ -110,94 +110,29 @@ ggsave(here("outputs/factor_analysis.png"), height = 10, width = 8)
 
 I created composite variables by calculating the mean of survey items related to each estimated factor score.
 
-## Non-weighted 
-
-```{r}
-base <- vars_nested %>%
-  select(!matches("fa")) %>%
-  unnest(data) %>%
-  pivot_longer(c(-1), 
-               names_to = "Variables", 
-               values_to = "Scores") %>%
-  group_by(race, Variables)
-
-non_weighted_summary <- group_summarize(base, "Non-weighted")
-```
-
-## Weighted 
-
-```{r}
-weighted_summary <- group_summarize_weight(base, vars_nested, "Weighted")
-```
-
-## Bind them together 
-
-```{r}
-weighted_comparison <- bind_rows(non_weighted_summary, weighted_summary)
-```
-
-## Data visualization 
-
-```{r}
-weighted_comparison %>%
-    filter(race != "Multiracial") %>%
-    ggplot(aes(x = reorder(dimension, mean), y = mean, ymax = upper.ci, ymin = lower.ci)) +
-        geom_pointrange(size = 0.7) +  # point estimates plus confidence intervals +
-        geom_text_repel(aes(label = round(mean, 2))) +
-        coord_flip() +
-        labs(title = "Average and Weighted Average Responses by Two Dimensions of Marginalization",
-             y = "Average score of survey responses", x = "",
-             caption = "Source: National Asian American Survey (2016)") +
-        facet_grid(race~Type)
-
-ggsave(here("outputs/weighted_responses.png"), width = 10)
-```
-
 ## Export composite variables 
 
 ```{r}
 # Add respondent ID
 vars$respid <- imputed$respid
 
-# Extract factor weights by race
-final_base <- vars_nested %>%
-  select(-c(fa_res, fa_loadings, data)) %>%
-  unnest(fa_weights)
-
 # Create composite variables 
-disc <- final_base %>% 
-  filter(str_detect(Measures, "disc")) %>%
-  filter(Factor == "Discrimination") 
-     
-microagg <- final_base %>% 
-  filter(str_detect(Measures, "micro")) %>%
-  filter(Factor != "Discrimination") 
+disc <- vars %>% 
+  select(contains("disc")) %>%
+  mutate(Mean = rowMeans(.)) %>%
+  select(Mean) %>%
+  rename(discrimination = Mean) 
 
-final_base <- bind_rows(disc, microagg)
-```
+microagg <- vars %>% 
+  select(contains("micro")) %>%
+  mutate(Mean = rowMeans(.)) %>%
+  select(Mean) %>%
+  rename(micro_aggression = Mean) 
 
+final_base <- bind_cols(disc, microagg)
 
-```{r}
-new_vars <- left_join(vars %>%
-  pivot_longer(c(1:13), 
-               names_to = "Measures", 
-               values_to = "Scores"),
-  final_base) %>%
-  group_by(race, respid, Factor) %>%
-  mutate(mean = Hmisc::wtd.mean(Scores, Weights)) %>%
-  select(-c(Measures, Scores, Weights)) %>%
-  dplyr::distinct_all() %>%
-  pivot_wider(names_from = "Factor",
-              values_from = "mean")
-```
-
-
-```{r}
 # Create a complete dataframe 
-full_vars <- left_join(imputed, vars) 
-
-# Add new variables
-augmented_df <- left_join(full_vars, new_vars)
+augmented_df <- bind_cols(imputed, final_base) 
 
 # Final cleanup 
 augmented_df <- janitor::clean_names(augmented_df)

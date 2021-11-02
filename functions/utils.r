@@ -173,10 +173,10 @@ viz_ols <- function(df, dv_type) {
         mutate(term = recode(term, 
                              "discrimination" = "Discrimination",
                              "micro_aggression" = "Micro-aggression")) %>%
-        ggplot(aes(x = race, y = estimate, ymax = conf.high, ymin = conf.low)) +
+        ggplot(aes(x = race, y = estimate, ymax = conf.high, ymin = conf.low, col = term)) +
             geom_pointrange() +
             coord_flip() +
-            facet_grid(term~group) +
+            facet_wrap(~group, ncol = 2) +
             ggrepel::geom_text_repel(aes(label = round(estimate, 2))) +
             scale_color_discrete(labels = c("Discrimination", "Micro-aggression")) +
             labs(title = glue("DV: {dv_type}"),
