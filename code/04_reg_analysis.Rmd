@@ -17,7 +17,7 @@ pacman::p_load(
         glue, # putting strings and objects together
         patchwork, # putting ggplots together 
         sjPlot, # for visualizing regressions
-        ggthemes, # for fancy ggplot themes
+        ggrepel, 
         conflicted, # for resolving conflicting functions
         ggthemes, # for fancy ggplot themes
         here, # for self-contained projects
@@ -30,7 +30,7 @@ conflict_prefer("select", "dplyr")
 conflict_prefer("filter", "dplyr")
 
 # for publication-friendly theme 
-theme_set(theme_pubr(base_size = 12))
+theme_set(theme_pubr(base_size = 10))
 
 source(here("functions", "utils.r"))
 ```
@@ -39,6 +39,8 @@ source(here("functions", "utils.r"))
 
 ```{r}
 df <- read.csv(here("processed_data", "augmented_df.csv"))[,-1]
+
+names(df)
 ```
 
 # Regression analysis
@@ -56,7 +58,6 @@ nested <- df %>%
 Run model based on different dependent variables.
 
 ```{r}
-
 # Linked fate
 lf_models <- nested %>%
   mutate(
@@ -64,27 +65,20 @@ lf_models <- nested %>%
     ethnic_mls = map(data, ~ols(., "linkedfate_ethnic"))
     )
 
-comm_models1 <- nested %>%
+comm_models <- nested %>%
   mutate( 
     commrace = map(data, ~ols(., "commrace")),
     commcult = map(data, ~ols(.,"commcult")),
     commecon = map(data, ~ols(., "commecon")),      commpol = map(data, ~ols(.,"commpol"))
   )
 
-comm_models2 <- nested %>%
-  mutate(
-    commblacks = map(data, ~ols(., "commblacks")),
-    commlatinos = map(data, ~ols(., "commlatinos")), 
-    commwhites = map(data, ~ols(., "commwhites")),
-    commasians = map(data, ~ols(.,"commasians"))
-    )
-
-id_models <-  nested %>%
-  mutate(
-    commblacks = map(data, ~ols(., "commblacks")),
-    commlatinos = map(data, ~ols(., "commlatinos")), 
-    commwhites = map(data, ~ols(., "commwhites")),
-    commasians = map(data, ~ols(.,"commasians"))
+fed_models <- nested %>%
+    mutate(
+        inequality = map(data, ~ols(., "inequality")),
+        bank_reg = map(data, ~ols(., "bank_reg")),
+        minimum_wage = map(data, ~ols(., "minimum_wage")),
+        rich_tax = map(data, ~ols(., "rich_tax")),
+        free_college = map(data, ~ols(., "free_college"))
     )
 ```
 
@@ -94,40 +88,22 @@ id_models <-  nested %>%
 lf_res <- reduce(list(unnest_model(lf_models, "race_mls", "Race"),
 unnest_model(lf_models %>% filter(race %in% c("AAPI", "Latino")), "ethnic_mls", "Ethnic")), full_join)
 
-comm_res1 <- reduce(list(
-  unnest_model(comm_models1, "commrace", "Racial"),
-  unnest_model(comm_models1, "commcult", "Cultural"), 
-  unnest_model(comm_models1, "commecon", "Economic"),
-  unnest_model(comm_models1, "commpol", "Political")
+comm_res <- reduce(list(
+  unnest_model(comm_models, "commrace", "Racial"),
+  unnest_model(comm_models, "commcult", "Cultural"), 
+  unnest_model(comm_models, "commecon", "Economic"),
+  unnest_model(comm_models, "commpol", "Political")
 ),
   full_join)
 
-comm_res2 <- reduce(list(
-  unnest_model(comm_models2, "commblacks", "With Blacks"),
-  unnest_model(comm_models2, "commlatinos", "With Latinos"), 
-  unnest_model(comm_models2, "commwhites", "With Whites"),
-  unnest_model(comm_models2, "commasians", "With Asians")
+fed_res <- reduce(list(
+  unnest_model(fed_models, "inequality", "Reducing inequality"),
+  unnest_model(fed_models, "bank_reg", "Regulating banks"),
+  unnest_model(fed_models, "minimum_wage", "Minimum wage"),
+  unnest_model(fed_models, "rich_tax", "Taxing Rich"),
+  unnest_model(fed_models, "free_college", "Free college")
 ),
   full_join)
-
-# Remove cases, which were entirely imputed 
-comm_res2 <- comm_res2 %>%
-  filter(!(str_detect(race, "AAPI") &  str_detect(group, "Asian"))) %>%
-  filter(!(str_detect(race, "White") &
-str_detect(group, "White"))) %>%
-  filter(!(str_detect(race, "Black") &
-str_detect(group, "Black"))) %>%
-  filter(!(str_detect(race, "Latino") &
-str_detect(group, "Latino")))
-
-id_res <- reduce(list(unnest_model(id_models, "commasians", "AAPI"),
-     unnest_model(id_models, "commwhites", "White"),
-     unnest_model(id_models, "commblacks", "Black"),
-     unnest_model(id_models, "commlatinos", "Latino")), full_join)
-
-# Select relevant cases 
-id_res <- id_res %>%
-   filter(race == group)
 ```
 
 ## Visualize outputs 
@@ -138,19 +114,14 @@ lf_res %>%
 
 ggsave(here("outputs", "lf_res.png"), width = 8)
 
-id_res %>%
-  viz_ols_no_facet("Racial identity salience")
-
-ggsave(here("outputs", "id_res.png"), width = 8)
-
-comm_res1 %>%
+comm_res %>%
   viz_ols("Common factors")
 
-ggsave(here("outputs", "comm_res1.png"), width = 8)
+ggsave(here("outputs", "comm_res.png"), width = 8)
 
-comm_res2 %>%
-  viz_ols("Common fate")
+fed_res %>%
+  viz_ols("Federal governmenet policies")
 
-ggsave(here("outputs", "comm_res2.png"), width = 8)
+ggsave(here("outputs", "fed_res.png"), width = 8)
 ```
 

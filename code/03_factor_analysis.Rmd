@@ -19,6 +19,7 @@ pacman::p_load(
         FactoMineR, # for multivariate exploratory data analysis and data mining
         conflicted, # for resolving conflicting functions
         ggthemes, # for fancy ggplot themes
+        ggrepel, 
         here, # for self-contained projects
         ggpubr, # for pub-ready themes
         Hmisc, # for weighted mean and sd calculations
@@ -135,16 +136,17 @@ weighted_summary <- group_summarize_weight(base, vars_nested, "Weighted")
 weighted_comparison <- bind_rows(non_weighted_summary, weighted_summary)
 ```
 
-## 6. Data visualization 
+## Data visualization 
 
 ```{r}
 weighted_comparison %>%
     filter(race != "Multiracial") %>%
     ggplot(aes(x = reorder(dimension, mean), y = mean, ymax = upper.ci, ymin = lower.ci)) +
-        geom_pointrange(size = 0.7) +  # point estimates plus confidence intervals 
+        geom_pointrange(size = 0.7) +  # point estimates plus confidence intervals +
+        geom_text_repel(aes(label = round(mean, 2))) +
         coord_flip() +
         labs(title = "Average and Weighted Average Responses by Two Dimensions of Marginalization",
-             y = "Average score of survey responses", x = "Estimated factor scores",
+             y = "Average score of survey responses", x = "",
              caption = "Source: National Asian American Survey (2016)") +
         facet_grid(race~Type)
 
@@ -192,7 +194,7 @@ new_vars <- left_join(vars %>%
 
 ```{r}
 # Create a complete dataframe 
-full_vars <- left_join(vars, imputed) 
+full_vars <- left_join(imputed, vars) 
 
 # Add new variables
 augmented_df <- left_join(full_vars, new_vars)

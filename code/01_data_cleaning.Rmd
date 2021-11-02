@@ -53,8 +53,6 @@ data <- data %>%
 
 # There are 569 variables 
 ncol(data) 
-
-names(data)
 ```
 
 # Select and rename variables 
@@ -70,7 +68,7 @@ co_vars <- data %>%
         # Covariates
         male, # male 
         age, # age 
-        educout_degree, # edu 
+        educ6, # edu 
         ownhome, # home ownership 
         race, # race 
         democrat, # democrat
@@ -78,22 +76,33 @@ co_vars <- data %>%
         q10_15, # income level
         statesmp, # states 
         forborn, # foreign born 
-        citizen) # citizen
-
-co_vars <- co_vars %>%
+        citizen) %>% # citizen
   rename("income" = "q10_15",
          "states" = "statesmp")
 
-mar_vars <- data %>% dplyr::select(matches("micro|discrim"))
+mar_vars <- data %>% dplyr::select(matches("micro|discrim")) %>%
+    select(-contains("index")) %>%
+    select(-contains("worship"))
 
 id_vars <- data %>% dplyr::select(matches("id_|id2_"))
 
 linked_vars <- data %>% dplyr::select(matches("linked"))
 
-comm_vars <- data %>% dplyr::select(matches("comm"))
+comm_vars <- data %>% dplyr::select(commrace, commcult, commecon, commpol)
 
+# DV 
+
+dv_vars <- data %>%
+    dplyr::select(q3_6_a, q3_6_b, q3_6_c, q3_6_d, q3_6_f, q3_6_g) %>%
+    rename("inequality" = "q3_6_a",
+         "bank_reg" = "q3_6_b",
+         "minimum_wage" = "q3_6_c",
+         "rich_tax" = "q3_6_d",
+         "american_job" = "q3_6_f",
+         "free_college" = "q3_6_g")
+    
 # Bind them together
-df <- reduce(list(co_vars, mar_vars, id_vars, linked_vars, comm_vars), bind_cols)
+df <- bind_cols(co_vars, mar_vars, id_vars, linked_vars, comm_vars, dv_vars)
 
 # Inspect
 glimpse(df)
@@ -130,9 +139,23 @@ df <- df %>%
 ## Replace non-response values (`9`, `88`, `99`, `8888`, `9999`) with `NA`s
 
 ```{r}
-df[df %in% c(9, 88, 99, 8888, 9999)] <- NA
+df <- na_if(df, 9)
+df <- na_if(df, 88)
+df <- na_if(df, 99)
+df <- na_if(df, 8888)
+df <- na_if(df, 9999)
 
 glue("What's the percentage of missing values in the data AFTER replacing non-reponse values with NAs?: {(mean(is.na(df)) %>% round(2)) * 100}%")
+```
+
+## Reverse values 
+
+```{r}
+df$inequality <- 6 - df$inequality
+df$bank_reg <- 6 - df$bank_reg
+df$minimum_wage <- 6 - df$minimum_wage
+df$rich_tax <- 6 - df$rich_tax
+df$free_college <- 6 - df$free_college
 ```
 
 ## Rescale responses 
@@ -149,6 +172,8 @@ rescaled <- df %>%
 
 ```{r}
 combined <- bind_cols(rescaled, df %>% select(-where(is.numeric)))
+
+names(combined)
 ```
 
 # Descriptive statistics 
@@ -192,7 +217,7 @@ d2 <- combined %>%
     scale_y_continuous(labels = scales::percent)
 
 d1 + d2
-ggsave(here("outputs", "desc_comp.png"))
+ggsave(here("outputs", "desc_comp.png"), width = 8)
 ```
 
 # Save the cleaned file 

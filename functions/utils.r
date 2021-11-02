@@ -160,7 +160,7 @@ group_summarize_weight <- function(base, vars_nested, type) {
 # Build regression models 
 ols <- function(df, dv){
     
-    lm_out <- lm_robust(df[[dv]] ~ discrimination + micro_aggression + age + educout_degree + income + ownhome + male + forborn + democrat + republican, data = df)
+    lm_out <- lm_robust(df[[dv]] ~ discrimination + micro_aggression + age + educ6 + income + ownhome + male + forborn + democrat + republican, data = df, fixed_effects = states)
     
     tidy(lm_out, conf.int = TRUE)
 }
@@ -170,13 +170,18 @@ ols <- function(df, dv){
 viz_ols <- function(df, dv_type) {
     
     df %>%
-        ggplot(aes(x = race, y = estimate, ymax = conf.high, ymin = conf.low, color = term)) +
-            geom_pointrange(size = 1) +
+        mutate(term = recode(term, 
+                             "discrimination" = "Discrimination",
+                             "micro_aggression" = "Micro-aggression")) %>%
+        ggplot(aes(x = race, y = estimate, ymax = conf.high, ymin = conf.low)) +
+            geom_pointrange() +
             coord_flip() +
-            facet_wrap(~group) +
+            facet_grid(term~group) +
+            ggrepel::geom_text_repel(aes(label = round(estimate, 2))) +
             scale_color_discrete(labels = c("Discrimination", "Micro-aggression")) +
             labs(title = glue("DV: {dv_type}"),
-                 subtitle = glue("Covariates: Age, Education, Income, Homeownership, Gender, Foreign born status, Partisanship"),
+                 subtitle = glue("Covariates: Age, Education, Income, Homeownership, Gender, Foreign born status, Partisanship
+                                 Including state fixed effects"),
                  x = "Race",
                  y = "Estimate",
                  color = "IVs",
@@ -193,7 +198,8 @@ viz_ols_no_facet <- function(df, dv_type) {
         coord_flip() +
         scale_color_discrete(labels = c("Discrimination", "Micro-aggression")) +
         labs(title = glue("DV: {dv_type}"),
-             subtitle = glue("Covariates: Age, Education, Income, Homeownership, Gender, Foreign born status, Partisanship"),
+             subtitle = glue("Covariates: Age, Education, Income, Homeownership, Gender, Foreign born status, Partisanship
+                             Including state fixed effects"),
              x = "Race",
              y = "Estimate",
              color = "IVs",
