@@ -117,11 +117,11 @@ ggsave(here("outputs", "lf_res.png"), width = 8)
 comm_res %>%
   viz_ols("Common factors")
 
-ggsave(here("outputs", "comm_res.png"), width = 8)
+ggsave(here("outputs", "comm_res.png"), width = 8, height = 8)
 
 fed_res %>%
   viz_ols("Federal governmenet policies")
 
-ggsave(here("outputs", "fed_res.png"), width = 8)
+ggsave(here("outputs", "fed_res.png"), width = 8, height = 8)
 ```
 
