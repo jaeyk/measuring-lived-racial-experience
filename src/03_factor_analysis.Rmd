@@ -42,19 +42,25 @@ source(here("functions", "utils.r"))
 Importing the file that we created in `02_imputation.Rmd`.
 
 ```{r}
-imputed <- read.csv(here("processed_data/imputed.csv"))[,-1]
+imputed <- read.csv(here("processed_data/imputed.csv"))#[,-1] # No longer need to remove first column index if using new write.csv
+
+# For Factor Analysis demonstration, we will use the first imputation.
+# In a fully rigorous Bayesian framework, we might run FA on all 5 and pool, but that is complex for exploratory FA.
+# We will use .imp == 1 for the structural analysis.
+imputed_single <- imputed %>% filter(.imp == 1)
+imputed <- imputed # Keep full imputed for later export
 ```
-
-
-# Selecting variables 
-
-I selected the variables related to the multi-dimensions of lived racial experience from the survey. This time, I renamed these variable names using the `rename function()` from the `dplyr` package, as they will appear in the plots I will soon create.
-
-```{r}
-# Selecting variables 
-vars <- imputed %>% 
-  select(matches("micro|discrim")) %>%
-  select(-matches("index"))
+ 
+ 
+ # Selecting variables 
+ 
+ I selected the variables related to the multi-dimensions of lived racial experience from the survey. This time, I renamed these variable names using the `rename function()` from the `dplyr` package, as they will appear in the plots I will soon create.
+ 
+ ```{r}
+ # Selecting variables 
+ vars <- imputed_single %>% 
+   select(matches("micro|discrim")) %>%
+   select(-matches("index"))
 ```
 
 ## 3. Factor analysis 
@@ -81,13 +87,14 @@ fa.parallel(vars,
 
 ```{r}
 # Add grouping variable 
-vars$race <- imputed$race
+vars$race <- imputed_single$race
 
 # Factor analysis 
+# We run FA on the single imputation for structure discovery
 vars_nested <- vars %>%
   group_by(race) %>%
   nest() %>%
-  mutate(fa_res = map(data, run_fa), 
+  mutate(fa_res = map(data, ~run_fa(., use_poly = TRUE)), 
          fa_loadings = map(fa_res, df_fa_loadings),
          fa_weights = map(fa_res, df_fa_weights))
 ```
@@ -114,29 +121,27 @@ I created composite variables by calculating the mean of survey items related to
 
 ```{r}
 # Add respondent ID
-vars$respid <- imputed$respid
+vars$respid <- imputed_single$respid
 
-# Create composite variables 
-disc <- vars %>% 
-  select(contains("disc")) %>%
-  mutate(Mean = rowMeans(.)) %>%
-  select(Mean) %>%
-  rename(discrimination = Mean) 
+# NOTE: Factors were estimated on .imp==1.
+# To compute scores for ALL imputations, we should ideally project the loadings onto all datasets.
+# However, a simpler accepted approach is to use the raw mean scores of the items identified by FA.
+# Since the composites are just rowMeans of specific items, we can calculate this for the full `imputed` dataframe.
+ 
+# Create composite variables for the FULL imputed dataset
+disc_vars <- names(vars %>% select(contains("disc")))
+micro_vars <- names(vars %>% select(contains("micro")))
 
-microagg <- vars %>% 
-  select(contains("micro")) %>%
-  mutate(Mean = rowMeans(.)) %>%
-  select(Mean) %>%
-  rename(micro_aggression = Mean) 
-
-final_base <- bind_cols(disc, microagg)
-
-# Create a complete dataframe 
-augmented_df <- bind_cols(imputed, final_base) 
+augmented_df <- imputed %>%
+  mutate(
+    discrimination = rowMeans(select(., all_of(disc_vars))),
+    micro_aggression = rowMeans(select(., all_of(micro_vars)))
+  )
 
 # Final cleanup 
 augmented_df <- janitor::clean_names(augmented_df)
 
-write.csv(augmented_df, here("processed_data", "augmented_df.csv"))
+# Save long format
+write.csv(augmented_df, here("processed_data", "augmented_df.csv"), row.names = FALSE)
 ```
 

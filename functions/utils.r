@@ -10,13 +10,15 @@ reverse_dummy <- function(data){
 }
 
 # Running factor analysis 
-run_fa <- function(df){
+run_fa <- function(df, use_poly = FALSE){
+    
+    cor_method <- if(use_poly) "poly" else "cor"
     
     fa(df, 
        nfactors = 2, # two factors  
        rotate = 'oblimin', 
-       fm = 'ml') # ML estimation 
-    
+       fm = 'ml', # ML estimation 
+       cor = cor_method) 
 }
 
 # Turn factor loadings as a dataframe
@@ -158,11 +160,83 @@ group_summarize_weight <- function(base, vars_nested, type) {
 }
 
 # Build regression models 
-ols <- function(df, dv){
+ols <- function(df, dv, weights = NULL){
     
-    lm_out <- lm_robust(df[[dv]] ~ discrimination + micro_aggression + age + educ6 + income + ownhome + male + forborn + democrat + republican, data = df, fixed_effects = states)
+    # Check if data is multiply imputed (has .imp column with >1 value)
+    is_mi <- ".imp" %in% names(df) && length(unique(df$.imp)) > 1
     
-    tidy(lm_out, conf.int = TRUE)
+    if (is_mi) {
+        # Multiply imputed data: fit on each imputation and pool
+        
+        # Split data by imputation
+        imp_list <- split(df, df$.imp)
+        
+        # Fit model on each imputation
+        fits <- lapply(imp_list, function(d) {
+             lm_robust(as.formula(paste0(dv, " ~ discrimination + micro_aggression + age + educ6 + income + ownhome + male + forborn + democrat + republican")), 
+                       data = d, 
+                       weights = if(!is.null(weights)) d[[weights]] else NULL,
+                       fixed_effects = ~states)
+        })
+        
+        # Pool results (custom simplified pooling since estimatr objects don't play nice with mice::pool directly sometimes)
+        # We use Rubin's Rules on the coefficients and SEs
+        
+        # Extract coefficients and variances
+        coefs <- do.call(rbind, lapply(fits, coef))
+        vars <- do.call(rbind, lapply(fits, function(x) diag(vcov(x))))
+        
+        m <- length(fits)
+        
+        # Pooled estimates
+        q_bar <- colMeans(coefs)
+        
+        # Within-imputation variance
+        u_bar <- colMeans(vars)
+        
+        # Between-imputation variance
+        b <- apply(coefs, 2, var)
+        
+        # Total variance
+        t_var <- u_bar + (1 + 1/m) * b
+        se_pooled <- sqrt(t_var)
+        
+        # Degrees of freedom (Barnard & Rubin 1999)
+        v_m <- (m - 1) * (1 + u_bar / ((1 + 1/m) * b))^2
+        df_pooled <- v_m # simplified
+        
+        # T-statistics and p-values
+        t_stat <- q_bar / se_pooled
+        p_val <- 2 * pt(-abs(t_stat), df = df_pooled)
+        
+        # Confidence intervals
+        alpha <- 0.05
+        crit <- qt(1 - alpha/2, df_pooled)
+        conf_low <- q_bar - crit * se_pooled
+        conf_high <- q_bar + crit * se_pooled
+        
+        # Return tidy dataframe
+        tibble(
+            term = names(q_bar),
+            estimate = q_bar,
+            std.error = se_pooled,
+            statistic = t_stat,
+            p.value = p_val,
+            conf.low = conf_low,
+            conf.high = conf_high,
+            df = df_pooled,
+            outcome = dv
+        )
+
+    } else {
+        # Single dataset
+        lm_out <- lm_robust(as.formula(paste0(dv, " ~ discrimination + micro_aggression + age + educ6 + income + ownhome + male + forborn + democrat + republican")), 
+                            data = df, 
+                            weights = if(!is.null(weights)) df[[weights]] else NULL,
+                            fixed_effects = ~states)
+        
+        tidy(lm_out, conf.int = TRUE)
+    }
 }
 
 
@@ -221,20 +295,86 @@ unnest_model <- function(df, nested_obj, group_label) {
 }
 
 # Pooled interaction model (race x IV) with state fixed effects
-ols_interaction <- function(df, dv, ref_level = "Black") {
+ols_interaction <- function(df, dv, ref_level = "Black", weights = NULL) {
 
-    # Filter out Multiracial and relevel race
-    df_sub <- df %>%
-        filter(race != "Multiracial") %>%
-        mutate(race = relevel(factor(race), ref = ref_level))
+    # Check if MI
+    is_mi <- ".imp" %in% names(df) && length(unique(df$.imp)) > 1
 
-    # Build formula
+    # Formula
     fml <- as.formula(paste0(
         dv, " ~ discrimination * race + micro_aggression * race + ",
         "age + educ6 + income + ownhome + male + forborn + democrat + republican"
     ))
 
-    lm_robust(fml, data = df_sub, fixed_effects = ~states)
+    if (is_mi) {
+        # MI Pooling
+        imp_list <- split(df, df$.imp)
+        
+        fits <- lapply(imp_list, function(d) {
+            # Filter and relevel within each imputation
+            d_sub <- d %>%
+                filter(race != "Multiracial") %>%
+                mutate(race = relevel(factor(race), ref = ref_level))
+            
+            lm_robust(fml, 
+                      data = d_sub, 
+                      weights = if(!is.null(weights)) d_sub[[weights]] else NULL,
+                      fixed_effects = ~states)
+        })
+        
+        # Use mice::pool if possible, but manual pooling usually safer with robust SEs from estimatr
+        # (Same manual pooling logic as above - abstracted slightly)
+        
+        coefs <- do.call(rbind, lapply(fits, coef))
+        vars <- do.call(rbind, lapply(fits, function(x) diag(vcov(x))))
+        m <- length(fits)
+        q_bar <- colMeans(coefs)
+        u_bar <- colMeans(vars)
+        b <- apply(coefs, 2, var)
+        t_var <- u_bar + (1 + 1/m) * b
+        se_pooled <- sqrt(t_var)
+        
+        # We invoke a "fake" model object structure to allow downstream functions to use coef() and vcov()
+        # This is a bit hacky but keeps compatibility with compute_marginal_effects
+        
+        dummy_model <- fits[[1]] # Taking structure from first model
+        
+        # Override coefficients and vcov
+        dummy_model$coefficients <- q_bar
+        dummy_model$vcov <- diag(t_var) # Approximation: assuming no covariance between terms for simplicity in pooling vcov matrix 
+        # (For proper vcov pooling we need the full matrices, which is expensive but correct)
+        
+        # Let's do better vcov pooling for the marginal effects
+        vcov_list <- lapply(fits, vcov)
+        u_bar_mat <- Reduce("+", vcov_list) / m
+        
+        # Between covariance matrix
+        q_bar_mat <- matrix(q_bar, nrow=1)
+        b_mat <- matrix(0, nrow=length(q_bar), ncol=length(q_bar))
+        for(i in 1:m) {
+            diff <- matrix(coefs[i,] - q_bar, ncol=1)
+            b_mat <- b_mat + (diff %*% t(diff))
+        }
+        b_mat <- b_mat / (m - 1)
+        
+        t_var_mat <- u_bar_mat + (1 + 1/m) * b_mat
+        
+        dummy_model$vcov <- t_var_mat
+        dummy_model$std.error <- se_pooled
+        
+        return(dummy_model)
+        
+    } else {
+        # Filter out Multiracial and relevel race
+        df_sub <- df %>%
+            filter(race != "Multiracial") %>%
+            mutate(race = relevel(factor(race), ref = ref_level))
+        
+        lm_robust(fml, 
+                  data = df_sub, 
+                  weights = if(!is.null(weights)) df_sub[[weights]] else NULL,
+                  fixed_effects = ~states)
+    }
 }
 
 # Compute marginal effects (total effect = main + interaction) for each race/IV

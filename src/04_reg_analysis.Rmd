@@ -38,7 +38,7 @@ source(here("functions", "utils.r"))
 # Importing files 
 
 ```{r}
-df <- read.csv(here("processed_data", "augmented_df.csv"))[,-1]
+df <- read.csv(here("processed_data", "augmented_df.csv"))#[,-1]
 
 names(df)
 ```
@@ -58,21 +58,23 @@ nested <- df %>%
 Run model based on different dependent variables.
 
 ```{r}
+# --- UNWEIGHTED MODELS (Robustness) ---
+
 # Linked fate
-lf_models <- nested %>%
+lf_models_unweighted <- nested %>%
   mutate(
     race_mls = map(data, ~ols(., "linkedfate_race")),
     ethnic_mls = map(data, ~ols(., "linkedfate_ethnic"))
     )
 
-comm_models <- nested %>%
+comm_models_unweighted <- nested %>%
   mutate( 
     commrace = map(data, ~ols(., "commrace")),
     commcult = map(data, ~ols(.,"commcult")),
     commecon = map(data, ~ols(., "commecon")),      commpol = map(data, ~ols(.,"commpol"))
   )
 
-fed_models <- nested %>%
+fed_models_unweighted <- nested %>%
     mutate(
         inequality = map(data, ~ols(., "inequality")),
         bank_reg = map(data, ~ols(., "bank_reg")),
@@ -80,48 +82,103 @@ fed_models <- nested %>%
         rich_tax = map(data, ~ols(., "rich_tax")),
         free_college = map(data, ~ols(., "free_college"))
     )
+    
+# --- WEIGHTED MODELS (Main Analysis) ---
+
+# Linked fate
+lf_models_weighted <- nested %>%
+  mutate(
+    race_mls = map(data, ~ols(., "linkedfate_race", weights = "weight")),
+    ethnic_mls = map(data, ~ols(., "linkedfate_ethnic", weights = "weight"))
+    )
+
+comm_models_weighted <- nested %>%
+  mutate( 
+    commrace = map(data, ~ols(., "commrace", weights = "weight")),
+    commcult = map(data, ~ols(.,"commcult", weights = "weight")),
+    commecon = map(data, ~ols(., "commecon", weights = "weight")),
+    commpol = map(data, ~ols(.,"commpol", weights = "weight"))
+  )
+
+fed_models_weighted <- nested %>%
+    mutate(
+        inequality = map(data, ~ols(., "inequality", weights = "weight")),
+        bank_reg = map(data, ~ols(., "bank_reg", weights = "weight")),
+        minimum_wage = map(data, ~ols(., "minimum_wage", weights = "weight")),
+        rich_tax = map(data, ~ols(., "rich_tax", weights = "weight")),
+        free_college = map(data, ~ols(., "free_college", weights = "weight"))
+    )
 ```
 
 ## Bind results 
 
 ```{r}
-lf_res <- reduce(list(unnest_model(lf_models, "race_mls", "Race"),
-unnest_model(lf_models %>% filter(race %in% c("AAPI", "Latino")), "ethnic_mls", "Ethnic")), full_join)
+# --- Bind UNWEIGHTED Results ---
+lf_res_unweighted <- reduce(list(unnest_model(lf_models_unweighted, "race_mls", "Race"),
+unnest_model(lf_models_unweighted %>% filter(race %in% c("AAPI", "Latino")), "ethnic_mls", "Ethnic")), full_join)
 
-comm_res <- reduce(list(
-  unnest_model(comm_models, "commrace", "Racial"),
-  unnest_model(comm_models, "commcult", "Cultural"), 
-  unnest_model(comm_models, "commecon", "Economic"),
-  unnest_model(comm_models, "commpol", "Political")
-),
-  full_join)
+comm_res_unweighted <- reduce(list(
+  unnest_model(comm_models_unweighted, "commrace", "Racial"),
+  unnest_model(comm_models_unweighted, "commcult", "Cultural"), 
+  unnest_model(comm_models_unweighted, "commecon", "Economic"),
+  unnest_model(comm_models_unweighted, "commpol", "Political")
+), full_join)
 
-fed_res <- reduce(list(
-  unnest_model(fed_models, "inequality", "Reducing inequality"),
-  unnest_model(fed_models, "bank_reg", "Regulating banks"),
-  unnest_model(fed_models, "minimum_wage", "Minimum wage"),
-  unnest_model(fed_models, "rich_tax", "Taxing Rich"),
-  unnest_model(fed_models, "free_college", "Free college")
-),
-  full_join)
+fed_res_unweighted <- reduce(list(
+  unnest_model(fed_models_unweighted, "inequality", "Reducing inequality"),
+  unnest_model(fed_models_unweighted, "bank_reg", "Regulating banks"),
+  unnest_model(fed_models_unweighted, "minimum_wage", "Minimum wage"),
+  unnest_model(fed_models_unweighted, "rich_tax", "Taxing Rich"),
+  unnest_model(fed_models_unweighted, "free_college", "Free college")
+), full_join)
+
+# --- Bind WEIGHTED Results ---
+lf_res_weighted <- reduce(list(unnest_model(lf_models_weighted, "race_mls", "Race"),
+unnest_model(lf_models_weighted %>% filter(race %in% c("AAPI", "Latino")), "ethnic_mls", "Ethnic")), full_join)
+
+comm_res_weighted <- reduce(list(
+  unnest_model(comm_models_weighted, "commrace", "Racial"),
+  unnest_model(comm_models_weighted, "commcult", "Cultural"), 
+  unnest_model(comm_models_weighted, "commecon", "Economic"),
+  unnest_model(comm_models_weighted, "commpol", "Political")
+), full_join)
+
+fed_res_weighted <- reduce(list(
+  unnest_model(fed_models_weighted, "inequality", "Reducing inequality"),
+  unnest_model(fed_models_weighted, "bank_reg", "Regulating banks"),
+  unnest_model(fed_models_weighted, "minimum_wage", "Minimum wage"),
+  unnest_model(fed_models_weighted, "rich_tax", "Taxing Rich"),
+  unnest_model(fed_models_weighted, "free_college", "Free college")
+), full_join)
 ```
 
 ## Visualize outputs 
 
 ```{r}
-lf_res %>%
-  viz_ols("Linked fate")
+# --- Visualize UNWEIGHTED ---
+lf_res_unweighted %>%
+  viz_ols("Linked fate (Unweighted)")
+ggsave(here("outputs", "lf_res_unweighted.png"), width = 8)
 
-ggsave(here("outputs", "lf_res.png"), width = 8)
+comm_res_unweighted %>%
+  viz_ols("Common factors (Unweighted)")
+ggsave(here("outputs", "comm_res_unweighted.png"), width = 8, height = 8)
 
-comm_res %>%
-  viz_ols("Common factors")
+fed_res_unweighted %>%
+  viz_ols("Federal governmenet policies (Unweighted)")
+ggsave(here("outputs", "fed_res_unweighted.png"), width = 8, height = 8)
 
-ggsave(here("outputs", "comm_res.png"), width = 8, height = 8)
+# --- Visualize WEIGHTED ---
+lf_res_weighted %>%
+  viz_ols("Linked fate (Weighted)")
+ggsave(here("outputs", "lf_res_weighted.png"), width = 8)
 
-fed_res %>%
-  viz_ols("Federal governmenet policies")
+comm_res_weighted %>%
+  viz_ols("Common factors (Weighted)")
+ggsave(here("outputs", "comm_res_weighted.png"), width = 8, height = 8)
 
-ggsave(here("outputs", "fed_res.png"), width = 8, height = 8)
+fed_res_weighted %>%
+  viz_ols("Federal governmenet policies (Weighted)")
+ggsave(here("outputs", "fed_res_weighted.png"), width = 8, height = 8)
 ```
 

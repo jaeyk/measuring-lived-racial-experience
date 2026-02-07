@@ -101,22 +101,30 @@ imp <- mice(
 
 ```{r}
 # Pooling results
-imputed <- mice::complete(imp) # the first imputed data
+imputed <- mice::complete(imp, "long", include = FALSE) # save all 5 imputations
 
 # Check
 paste("The number of missing values in the imputed subset is", sum(is.na(imputed)))
 ```
-
+ 
 # Reassemble and save the imputed data
-
+ 
 ```{r}
-imputed$respid <- cleaned$respid
-imputed <- bind_cols(imputed, held_out)
+# We need to merge held_out columns back to the long format imputed data
+# The imputed data has .imp and .id columns. We need to match by .id (which corresponds to row number in original)
+
+# Add row number to held_out to facilitate join
+held_out$id_row <- 1:nrow(held_out)
+
+imputed <- imputed %>%
+  rename(id_row = .id) %>%
+  left_join(held_out, by = "id_row") %>%
+  select(-id_row) # remove temporary id
 
 paste("challeng_ vars still have NAs (by design):",
       sum(is.na(imputed %>% select(starts_with("challeng_")))))
 
-write.csv(imputed, here("processed_data/imputed.csv"))
+write.csv(imputed, here("processed_data/imputed.csv"), row.names = FALSE)
 
 names(imputed)
 ```
