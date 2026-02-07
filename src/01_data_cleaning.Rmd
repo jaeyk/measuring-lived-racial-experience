@@ -84,8 +84,6 @@ mar_vars <- data %>% dplyr::select(matches("micro|discrim")) %>%
     select(-contains("index")) %>%
     select(-contains("worship"))
 
-id_vars <- data %>% dplyr::select(matches("id_|id2_"))
-
 linked_vars <- data %>% dplyr::select(matches("linked"))
 
 comm_vars <- data %>% dplyr::select(commrace, commcult, commecon, commpol)
@@ -100,9 +98,31 @@ dv_vars <- data %>%
          "rich_tax" = "q3_6_d",
          "american_job" = "q3_6_f",
          "free_college" = "q3_6_g")
-    
+
+eq_vars <- data %>%
+    dplyr::select(eq_oppty, eq_toofar, eq_chance, eq_worryless, eq_notproblem, eq_fewerprobs)
+
+ethnic_vars <- data %>%
+    dplyr::select(chinese, filipino, indian, japanese, korean, vietnamese,
+                  cambodian, hmong, bangladeshi, pakistani, hawaiian)
+
+challeng_vars <- data %>%
+    dplyr::select(starts_with("challeng_"))
+
+# Import identity importance from raw data (recoded imp_* vars are buggy — all identical)
+raw <- read.dta(here::here("raw_data", "NAAS-16post-finalraw.dta"))
+imp_vars <- raw %>%
+    mutate(across(where(is.factor), compose(parse_number, as.character))) %>%
+    dplyr::select(respid, q4_2a, q4_2b, q4_2c, q4_2d) %>%
+    rename("imp_raceid" = "q4_2a", "imp_ethnicid" = "q4_2b",
+           "imp_genderid" = "q4_2c", "imp_nationid" = "q4_2d")
+
 # Bind them together
-df <- bind_cols(co_vars, mar_vars, id_vars, linked_vars, comm_vars, dv_vars)
+df <- bind_cols(co_vars, mar_vars, linked_vars, comm_vars, dv_vars,
+                eq_vars, ethnic_vars, challeng_vars)
+
+# Merge identity importance by respid
+df <- df %>% left_join(imp_vars, by = "respid")
 
 # Inspect
 glimpse(df)
@@ -136,16 +156,30 @@ df <- df %>%
          citizen = as.factor(citizen))
 ```
 
-## Replace non-response values (`9`, `88`, `99`, `8888`, `9999`) with `NA`s
+## Replace non-response values (`88`, `99`, `8888`, `9999`) with `NA`s
 
 ```{r}
-df <- na_if(df, 9)
-df <- na_if(df, 88)
-df <- na_if(df, 99)
-df <- na_if(df, 8888)
-df <- na_if(df, 9999)
+non_response_vals <- c(88, 99, 8888, 9999)
+df <- df %>%
+  mutate(across(where(is.numeric), ~ {
+    x <- .x
+    for (v in non_response_vals) x <- dplyr::na_if(x, v)
+    x
+  }))
 
 glue("What's the percentage of missing values in the data AFTER replacing non-reponse values with NAs?: {(mean(is.na(df)) %>% round(2)) * 100}%")
+```
+
+## Fix branching logic (structural missingness)
+
+Q4.4 (`linkedfate_ethnic`) is only asked of Asian and Latino respondents. Q4.2b (`imp_ethnicid`) is only asked of Asian and Latino respondents. Non-eligible groups have structural `0`s that should be `NA`.
+
+```{r}
+df <- df %>%
+  mutate(
+    linkedfate_ethnic = if_else(race %in% c("AAPI", "Latino"), linkedfate_ethnic, NA_real_),
+    imp_ethnicid = if_else(race %in% c("AAPI", "Latino"), imp_ethnicid, NA_real_)
+  )
 ```
 
 ## Reverse values 
@@ -156,6 +190,11 @@ df$bank_reg <- 6 - df$bank_reg
 df$minimum_wage <- 6 - df$minimum_wage
 df$rich_tax <- 6 - df$rich_tax
 df$free_college <- 6 - df$free_college
+
+# Reverse-code anti-egalitarian equality items (higher = more egalitarian)
+df$eq_toofar <- 6 - df$eq_toofar
+df$eq_worryless <- 6 - df$eq_worryless
+df$eq_notproblem <- 6 - df$eq_notproblem
 ```
 
 ## Rescale responses 

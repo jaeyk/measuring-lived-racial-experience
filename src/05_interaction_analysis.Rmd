@@ -1,0 +1,393 @@
+---
+title: "Pooled interaction models with formal tests"
+author: "Jae Yeon Kim"
+output:
+  html_document:
+    toc: true
+    theme: united
+---
+
+# Setup
+
+```{r}
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load(
+        tidyverse, # for the tidyverse framework
+        glue, # putting strings and objects together
+        patchwork, # putting ggplots together
+        conflicted, # for resolving conflicting functions
+        here, # for self-contained projects
+        ggpubr, # for pub-ready themes
+        estimatr, # stat modeling
+        modelsummary, # regression tables
+        kableExtra # table formatting
+)
+
+# Resolve conflicts
+conflict_prefer("select", "dplyr")
+conflict_prefer("filter", "dplyr")
+
+# Publication-friendly theme
+theme_set(theme_pubr(base_size = 10))
+
+source(here("functions", "utils.r"))
+source(here("functions", "theme_publications.r"))
+```
+
+# Data
+
+```{r}
+df <- read.csv(here("processed_data", "augmented_df.csv"))[,-1]
+
+# Filter Multiracial and relevel race with Black as reference
+df <- df %>%
+  filter(race != "Multiracial") %>%
+  mutate(race = relevel(factor(race), ref = "Black"))
+
+# Sample sizes by race
+table(df$race)
+```
+
+# Fit pooled interaction models
+
+```{r}
+# DVs by family
+dvs_lf <- c("linkedfate_race")
+dvs_comm <- c("commrace", "commcult", "commecon", "commpol")
+dvs_fed <- c("inequality", "bank_reg", "minimum_wage", "rich_tax", "free_college")
+all_dvs <- c(dvs_lf, dvs_comm, dvs_fed)
+
+# DV labels
+dv_labels <- c(
+  "linkedfate_race" = "Linked fate (racial)",
+  "commrace" = "Racial commonality",
+  "commcult" = "Cultural commonality",
+  "commecon" = "Economic commonality",
+  "commpol" = "Political commonality",
+  "inequality" = "Reducing inequality",
+  "bank_reg" = "Regulating banks",
+  "minimum_wage" = "Minimum wage",
+  "rich_tax" = "Taxing the rich",
+  "free_college" = "Free college"
+)
+
+# Fit all models
+models <- map(all_dvs, ~ols_interaction(df, .x)) %>%
+  set_names(all_dvs)
+```
+
+# Regression tables
+
+```{r}
+# Coefficient map for clean labels
+coef_map <- c(
+  "discrimination" = "Discrimination",
+  "micro_aggression" = "Micro-aggression",
+  "raceAAPI" = "AAPI",
+  "raceLatino" = "Latino",
+  "raceWhite" = "White",
+  "discrimination:raceAAPI" = "Discrimination × AAPI",
+  "discrimination:raceLatino" = "Discrimination × Latino",
+  "discrimination:raceWhite" = "Discrimination × White",
+  "micro_aggression:raceAAPI" = "Micro-aggression × AAPI",
+  "micro_aggression:raceLatino" = "Micro-aggression × Latino",
+  "micro_aggression:raceWhite" = "Micro-aggression × White",
+  "age" = "Age",
+  "educ6" = "Education",
+  "income" = "Income",
+  "ownhome" = "Homeownership",
+  "male" = "Male",
+  "forborn" = "Foreign born",
+  "democrat" = "Democrat",
+  "republican" = "Republican"
+)
+```
+
+## Linked fate
+
+```{r}
+modelsummary(
+  models[dvs_lf],
+  coef_map = coef_map,
+  stars = c("*" = 0.05, "**" = 0.01, "***" = 0.001),
+  gof_omit = "IC|Log|Adj|F|RMSE",
+  title = "Pooled interaction models: Linked fate",
+  notes = "Reference category: Black. State fixed effects included.",
+  output = here("outputs", "table_lf.html")
+)
+
+modelsummary(
+  models[dvs_lf],
+  coef_map = coef_map,
+  stars = c("*" = 0.05, "**" = 0.01, "***" = 0.001),
+  gof_omit = "IC|Log|Adj|F|RMSE",
+  title = "Pooled interaction models: Linked fate",
+  notes = "Reference category: Black. State fixed effects included.",
+  output = here("outputs", "table_lf.tex")
+)
+```
+
+## Community factors
+
+```{r}
+modelsummary(
+  models[dvs_comm],
+  coef_map = coef_map,
+  stars = c("*" = 0.05, "**" = 0.01, "***" = 0.001),
+  gof_omit = "IC|Log|Adj|F|RMSE",
+  title = "Pooled interaction models: Community commonality",
+  notes = "Reference category: Black. State fixed effects included.",
+  output = here("outputs", "table_comm.html")
+)
+
+modelsummary(
+  models[dvs_comm],
+  coef_map = coef_map,
+  stars = c("*" = 0.05, "**" = 0.01, "***" = 0.001),
+  gof_omit = "IC|Log|Adj|F|RMSE",
+  title = "Pooled interaction models: Community commonality",
+  notes = "Reference category: Black. State fixed effects included.",
+  output = here("outputs", "table_comm.tex")
+)
+```
+
+## Federal policy
+
+```{r}
+modelsummary(
+  models[dvs_fed],
+  coef_map = coef_map,
+  stars = c("*" = 0.05, "**" = 0.01, "***" = 0.001),
+  gof_omit = "IC|Log|Adj|F|RMSE",
+  title = "Pooled interaction models: Federal policy attitudes",
+  notes = "Reference category: Black. State fixed effects included.",
+  output = here("outputs", "table_fed.html")
+)
+
+modelsummary(
+  models[dvs_fed],
+  coef_map = coef_map,
+  stars = c("*" = 0.05, "**" = 0.01, "***" = 0.001),
+  gof_omit = "IC|Log|Adj|F|RMSE",
+  title = "Pooled interaction models: Federal policy attitudes",
+  notes = "Reference category: Black. State fixed effects included.",
+  output = here("outputs", "table_fed.tex")
+)
+```
+
+# Marginal effects plots
+
+```{r fig.width=10, fig.height=6}
+# Compute marginal effects for all models
+marginal_df <- map2_dfr(models, names(models), function(m, dv) {
+  compute_marginal_effects(m) %>%
+    mutate(dv = dv_labels[dv])
+})
+
+# Plot function by DV family
+plot_marginal <- function(data, title_text) {
+  data %>%
+    ggplot(aes(x = race, y = estimate, ymin = conf.low, ymax = conf.high, color = term)) +
+    geom_pointrange(position = position_dodge(width = 0.4), size = 0.6) +
+    geom_hline(yintercept = 0, linetype = "dotted") +
+    coord_flip() +
+    facet_wrap(~dv, scales = "free_x") +
+    scale_colour_Publication() +
+    theme_Publication(base_size = 10) +
+    labs(
+      title = title_text,
+      subtitle = "Marginal effects from pooled interaction models with state fixed effects",
+      x = "Race", y = "Estimate", color = "IV",
+      caption = "Source: National Asian American Survey (2016)"
+    )
+}
+```
+
+## Linked fate
+
+```{r fig.width=8, fig.height=4}
+p_lf <- marginal_df %>%
+  filter(dv %in% dv_labels[dvs_lf]) %>%
+  plot_marginal("Linked fate")
+p_lf
+
+ggsave(here("outputs", "marginal_lf.png"), p_lf, width = 8, height = 4)
+```
+
+## Community factors
+
+```{r fig.width=10, fig.height=6}
+p_comm <- marginal_df %>%
+  filter(dv %in% dv_labels[dvs_comm]) %>%
+  plot_marginal("Community commonality")
+p_comm
+
+ggsave(here("outputs", "marginal_comm.png"), p_comm, width = 10, height = 6)
+```
+
+## Federal policy
+
+```{r fig.width=12, fig.height=6}
+p_fed <- marginal_df %>%
+  filter(dv %in% dv_labels[dvs_fed]) %>%
+  plot_marginal("Federal policy attitudes")
+p_fed
+
+ggsave(here("outputs", "marginal_fed.png"), p_fed, width = 12, height = 6)
+```
+
+# Interaction term plots
+
+```{r fig.width=10, fig.height=8}
+# Extract interaction coefficients from all models
+int_df <- map2_dfr(models, names(models), function(m, dv) {
+  tidy(m, conf.int = TRUE) %>%
+    filter(str_detect(term, ":")) %>%
+    mutate(dv = dv_labels[dv])
+})
+
+# Parse IV and race from interaction term names
+int_df <- int_df %>%
+  mutate(
+    iv = case_when(
+      str_detect(term, "discrimination") ~ "Discrimination",
+      str_detect(term, "micro_aggression") ~ "Micro-aggression"
+    ),
+    race = str_extract(term, "AAPI|Latino|White")
+  )
+
+# Plot
+p_int <- int_df %>%
+  ggplot(aes(x = race, y = estimate, ymin = conf.low, ymax = conf.high, color = iv)) +
+  geom_pointrange(position = position_dodge(width = 0.4), size = 0.6) +
+  geom_hline(yintercept = 0, linetype = "dotted") +
+  coord_flip() +
+  facet_wrap(~dv, scales = "free_x", ncol = 3) +
+  scale_colour_Publication() +
+  theme_Publication(base_size = 10) +
+  labs(
+    title = "Interaction effects: Difference from Black respondents",
+    subtitle = "Coefficients from pooled interaction models with state fixed effects",
+    x = "Race", y = "Difference from Black", color = "IV",
+    caption = "Source: National Asian American Survey (2016)"
+  )
+p_int
+
+ggsave(here("outputs", "interaction_effects.png"), p_int, width = 10, height = 8)
+```
+
+# Within-group Wald tests
+
+Test whether discrimination = micro-aggression within each racial group.
+
+```{r}
+race_levels <- c("Black", "AAPI", "Latino", "White")
+
+wald_results <- map2_dfr(
+  rep(names(models), each = length(race_levels)),
+  rep(race_levels, times = length(models)),
+  function(dv, rl) {
+    test_disc_vs_micro(models[[dv]], rl) %>%
+      mutate(dv = dv_labels[dv])
+  }
+)
+
+# Add significance stars
+wald_results <- wald_results %>%
+  mutate(
+    sig = case_when(
+      p_value < 0.001 ~ "***",
+      p_value < 0.01  ~ "**",
+      p_value < 0.05  ~ "*",
+      TRUE            ~ ""
+    )
+  )
+
+# Format as table
+wald_results %>%
+  select(dv, race, estimate_diff, se_diff, z_stat, p_value, sig) %>%
+  mutate(across(c(estimate_diff, se_diff, z_stat), ~round(., 3)),
+         p_value = round(p_value, 4)) %>%
+  kbl(
+    col.names = c("DV", "Race", "Diff (Disc - Micro)", "SE", "z", "p", ""),
+    caption = "Wald tests: Discrimination vs. Micro-aggression within racial groups"
+  ) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+```
+
+# Linked fate (ethnic): AAPI and Latino only
+
+The `linkedfate_ethnic` variable is structurally missing for Black and White respondents. We fit a separate two-group model.
+
+```{r}
+df_ethnic <- df %>%
+  filter(race %in% c("AAPI", "Latino")) %>%
+  mutate(race = droplevels(race))
+
+# Fit model (no interactions since only 2 groups, use race as covariate)
+model_ethnic <- lm_robust(
+  linkedfate_ethnic ~ discrimination * race + micro_aggression * race +
+    age + educ6 + income + ownhome + male + forborn + democrat + republican,
+  data = df_ethnic, fixed_effects = ~states
+)
+
+# Table
+modelsummary(
+  list("Linked fate (ethnic)" = model_ethnic),
+  coef_map = coef_map,
+  stars = c("*" = 0.05, "**" = 0.01, "***" = 0.001),
+  gof_omit = "IC|Log|Adj|F|RMSE",
+  title = "Pooled interaction model: Linked fate (ethnic), AAPI and Latino only",
+  notes = "Reference category: AAPI. State fixed effects included.",
+  output = here("outputs", "table_lf_ethnic.html")
+)
+
+modelsummary(
+  list("Linked fate (ethnic)" = model_ethnic),
+  coef_map = coef_map,
+  stars = c("*" = 0.05, "**" = 0.01, "***" = 0.001),
+  gof_omit = "IC|Log|Adj|F|RMSE",
+  title = "Pooled interaction model: Linked fate (ethnic), AAPI and Latino only",
+  notes = "Reference category: AAPI. State fixed effects included.",
+  output = here("outputs", "table_lf_ethnic.tex")
+)
+```
+
+```{r fig.width=8, fig.height=4}
+# Marginal effects for ethnic linked fate
+marginal_ethnic <- compute_marginal_effects(model_ethnic) %>%
+  mutate(dv = "Linked fate (ethnic)")
+
+p_ethnic <- marginal_ethnic %>%
+  ggplot(aes(x = race, y = estimate, ymin = conf.low, ymax = conf.high, color = term)) +
+  geom_pointrange(position = position_dodge(width = 0.4), size = 0.6) +
+  geom_hline(yintercept = 0, linetype = "dotted") +
+  coord_flip() +
+  scale_colour_Publication() +
+  theme_Publication(base_size = 10) +
+  labs(
+    title = "Linked fate (ethnic): AAPI vs. Latino",
+    subtitle = "Marginal effects from pooled interaction model with state fixed effects",
+    x = "Race", y = "Estimate", color = "IV",
+    caption = "Source: National Asian American Survey (2016)"
+  )
+p_ethnic
+
+ggsave(here("outputs", "marginal_lf_ethnic.png"), p_ethnic, width = 8, height = 4)
+```
+
+# Save Wald test table
+
+```{r}
+wald_results %>%
+  select(dv, race, estimate_diff, se_diff, z_stat, p_value, sig) %>%
+  mutate(across(c(estimate_diff, se_diff, z_stat), ~round(., 3)),
+         p_value = round(p_value, 4)) %>%
+  kbl(
+    col.names = c("DV", "Race", "Diff (Disc - Micro)", "SE", "z", "p", ""),
+    caption = "Wald tests: Discrimination vs. Micro-aggression within racial groups",
+    format = "html"
+  ) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE) %>%
+  save_kable(here("outputs", "wald_tests.html"))
+```

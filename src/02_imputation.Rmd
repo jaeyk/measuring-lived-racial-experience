@@ -74,29 +74,47 @@ In this case, I took a multiple imputation approach. I recovered (imputed) missi
 In this project, I used the `mice package` developed by [Stef van Buuren](https://stefvanbuuren.name/).  The following code shows how the imputation model is set up. I comment on each argument to make it explicit how the model is set up. For instance, the `m argument` refers to the number of imputations, and I set it to `5`.
 
 ```{r}
+# Columns to exclude from imputation:
+# - challeng_* has ~50% structural missingness by design (rotating block)
+# - ethnic indicators are complete binary 0/1 with no missingness
+no_impute_cols <- c(
+  grep("^challeng_", names(cleaned), value = TRUE),
+  "chinese", "filipino", "indian", "japanese", "korean",
+  "vietnamese", "cambodian", "hmong", "bangladeshi",
+  "pakistani", "hawaiian"
+)
+
+# Separate held-out columns from imputable columns
+held_out <- cleaned %>% select(all_of(no_impute_cols))
+to_impute <- cleaned %>% select(-respid, -all_of(no_impute_cols))
+
 imp <- mice(
-  cleaned %>% select(-respid),
+  to_impute,
     seed = 1234, # for reproducibility
     m = 5, # the number of imputations
-    maxit = 100, # the max number of iterations 
+    maxit = 100, # the max number of iterations
     method = "pmm", # predictive mean method
-    print = FALSE) 
+    print = FALSE)
 ```
 
 ## Pooling results
 
 ```{r}
-# Pooling results 
+# Pooling results
 imputed <- mice::complete(imp) # the first imputed data
 
-# Check 
-paste("The number of missing values in the data after multiple imputation is", sum(is.na(imputed)))
+# Check
+paste("The number of missing values in the imputed subset is", sum(is.na(imputed)))
 ```
 
-# the imputed data
+# Reassemble and save the imputed data
 
 ```{r}
 imputed$respid <- cleaned$respid
+imputed <- bind_cols(imputed, held_out)
+
+paste("challeng_ vars still have NAs (by design):",
+      sum(is.na(imputed %>% select(starts_with("challeng_")))))
 
 write.csv(imputed, here("processed_data/imputed.csv"))
 

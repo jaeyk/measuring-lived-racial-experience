@@ -23,7 +23,7 @@ pacman::p_load(
         here, # for self-contained projects
         ggpubr, # for pub-ready themes
         Hmisc, # for weighted mean and sd calculations
-        jantior # for additional data cleaning 
+        janitor # for additional data cleaning
 )
 
 
