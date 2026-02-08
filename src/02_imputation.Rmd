@@ -24,8 +24,6 @@ pacman::p_load(
 
 source(here("functions", "utils.r"))
 
-remotes::install_github("njtierney/naniar")
-
 # for publication-friendly theme 
 theme_set(theme_pubr())
 ```
@@ -77,11 +75,13 @@ In this project, I used the `mice package` developed by [Stef van Buuren](https:
 # Columns to exclude from imputation:
 # - challeng_* has ~50% structural missingness by design (rotating block)
 # - ethnic indicators are complete binary 0/1 with no missingness
+# - survey weight should not be imputed
 no_impute_cols <- c(
   grep("^challeng_", names(cleaned), value = TRUE),
   "chinese", "filipino", "indian", "japanese", "korean",
   "vietnamese", "cambodian", "hmong", "bangladeshi",
-  "pakistani", "hawaiian"
+  "pakistani", "hawaiian",
+  "weight"
 )
 
 # Separate held-out columns from imputable columns
@@ -92,7 +92,7 @@ imp <- mice(
   to_impute,
     seed = 1234, # for reproducibility
     m = 5, # the number of imputations
-    maxit = 100, # the max number of iterations
+    maxit = 20, # reduced from 100 for performance (sufficient for convergence usually)
     method = "pmm", # predictive mean method
     print = FALSE)
 ```

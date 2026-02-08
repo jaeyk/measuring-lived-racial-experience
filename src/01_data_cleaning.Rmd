@@ -74,10 +74,12 @@ co_vars <- data %>%
         democrat, # democrat
         republican, # republican
         q10_15, # income level
+        pidadjweight, # survey weight (PID-adjusted, Wave 2)
         statesmp, # states 
         forborn, # foreign born 
         citizen) %>% # citizen
   rename("income" = "q10_15",
+         "weight" = "pidadjweight",
          "states" = "statesmp")
 
 mar_vars <- data %>% dplyr::select(matches("micro|discrim")) %>%
@@ -204,13 +206,13 @@ Rescale ordinal responses on the same scale (0-1).
 ```{r}
 # Re-scale ordinal responses
 rescaled <- df %>%
-  dplyr::select(where(is.numeric)) %>% # starts with q
+  dplyr::select(where(is.numeric), -weight) %>% # keep survey weight on original scale
   apply(2, scales::rescale) %>%
   as.data.frame() 
 ```
 
 ```{r}
-combined <- bind_cols(rescaled, df %>% select(-where(is.numeric)))
+combined <- bind_cols(rescaled, df %>% select(respid, where(is.factor), weight))
 
 names(combined)
 ```

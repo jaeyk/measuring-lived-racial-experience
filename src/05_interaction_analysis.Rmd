@@ -20,7 +20,9 @@ pacman::p_load(
         ggpubr, # for pub-ready themes
         estimatr, # stat modeling
         modelsummary, # regression tables
-        kableExtra # table formatting
+        kableExtra, # table formatting
+        purrr, # for functional programming
+        marginaleffects # for marginal effects and contrasts
 )
 
 # Resolve conflicts
@@ -72,7 +74,7 @@ dv_labels <- c(
 )
 
 # Fit all models
-# Fit all models
+
 # Unweighted
 models_unweighted <- map(all_dvs, ~ols_interaction(df, .x)) %>%
   set_names(all_dvs)
@@ -190,40 +192,426 @@ marginal_df_weighted <- map2_dfr(models_weighted, names(models_weighted), functi
   compute_marginal_effects(m) %>%
     mutate(dv = dv_labels[dv])
 })
+```
 
-# Plot function by DV family (reused)
+```{r}
+# Plot function by DV family (using estimated marginal effects)
+plot_me_family_df <- function(marginal_df, dv_ids, dv_labels, title, ncol = 2) {
+  dv_subset <- unname(dv_labels[dv_ids])
+
+  marginal_df %>%
+    filter(dv %in% dv_subset) %>%
+    mutate(
+      dv = factor(dv, levels = dv_subset),
+      race = factor(race, levels = c("Black", "AAPI", "Latino", "White"))
+    ) %>%
+    ggplot(aes(x = race, y = estimate, ymin = conf.low, ymax = conf.high, color = term)) +
+    geom_pointrange(position = position_dodge(width = 0.4), size = 0.6) +
+    geom_hline(yintercept = 0, linetype = "dotted") +
+    coord_flip() +
+    facet_wrap(~dv, scales = "free_x", ncol = ncol) +
+    scale_colour_Publication() +
+    theme_Publication(base_size = 10) +
+    labs(
+      title = title,
+      subtitle = "Estimated marginal effects (main + interaction) by race",
+      x = "Race", y = "Marginal effect estimate", color = "IV",
+      caption = "Source: National Asian American Survey (2016)"
+    )
+}
 
 # --- UNWEIGHTED Visualizations ---
-p_lf_un <- marginal_df_unweighted %>%
-  filter(dv %in% dv_labels[dvs_lf]) %>%
-  plot_marginal("Linked fate (Unweighted)")
-ggsave(here("outputs", "marginal_lf_unweighted.png"), p_lf_un, width = 8, height = 4)
+p_lf_un <- plot_me_family_df(
+  marginal_df_unweighted,
+  dvs_lf,
+  dv_labels,
+  "Linked fate (Unweighted)",
+  ncol = 1
+)
 
-p_comm_un <- marginal_df_unweighted %>%
-  filter(dv %in% dv_labels[dvs_comm]) %>%
-  plot_marginal("Community commonality (Unweighted)")
-ggsave(here("outputs", "marginal_comm_unweighted.png"), p_comm_un, width = 10, height = 6)
+ggsave(
+  here("outputs", "marginal_lf_unweighted.png"),
+  p_lf_un,
+  width = 8,
+  height = 4
+)
 
-p_fed_un <- marginal_df_unweighted %>%
-  filter(dv %in% dv_labels[dvs_fed]) %>%
-  plot_marginal("Federal policy attitudes (Unweighted)")
-ggsave(here("outputs", "marginal_fed_unweighted.png"), p_fed_un, width = 12, height = 6)
+p_comm_un <- plot_me_family_df(
+  marginal_df_unweighted,
+  dvs_comm,
+  dv_labels,
+  "Community commonality (Unweighted)",
+  ncol = 2
+)
+
+ggsave(
+  here("outputs", "marginal_comm_unweighted.png"),
+  p_comm_un,
+  width = 10,
+  height = 6
+)
+
+p_fed_un <- plot_me_family_df(
+  marginal_df_unweighted,
+  dvs_fed,
+  dv_labels,
+  "Federal policy attitudes (Unweighted)",
+  ncol = 3
+)
+
+ggsave(
+  here("outputs", "marginal_fed_unweighted.png"),
+  p_fed_un,
+  width = 12,
+  height = 6
+)
 
 # --- WEIGHTED Visualizations ---
-p_lf_w <- marginal_df_weighted %>%
+lf_unweighted_df <- marginal_df_unweighted %>%
   filter(dv %in% dv_labels[dvs_lf]) %>%
-  plot_marginal("Linked fate (Weighted)")
-ggsave(here("outputs", "marginal_lf_weighted.png"), p_lf_w, width = 8, height = 4)
+  mutate(
+    race = factor(race, levels = c("Black", "AAPI", "Latino", "White")),
+    term = factor(term, levels = c("Discrimination", "Micro-aggression"))
+  )
 
-p_comm_w <- marginal_df_weighted %>%
-  filter(dv %in% dv_labels[dvs_comm]) %>%
-  plot_marginal("Community commonality (Weighted)")
-ggsave(here("outputs", "marginal_comm_weighted.png"), p_comm_w, width = 10, height = 6)
+p_lf <- lf_unweighted_df %>%
+  ggplot(aes(x = race, y = estimate, ymin = conf.low, ymax = conf.high, color = term, shape = term)) +
+  geom_hline(yintercept = 0, linetype = "dotted") +
+  geom_errorbar(
+    position = position_dodge(width = 0.45),
+    width = 0.12,
+    linewidth = 0.7
+  ) +
+  geom_point(
+    position = position_dodge(width = 0.45),
+    size = 2.8
+  ) +
+  geom_label(
+    aes(label = sprintf("%.2f", estimate)),
+    position = position_dodge(width = 0.45),
+    nudge_y = 0.045,
+    size = 3.1,
+    fill = "white",
+    alpha = 0.9,
+    label.size = 0,
+    show.legend = FALSE
+  ) +
+  coord_cartesian(ylim = c(-0.02, 0.5)) +
+  scale_color_grey(start = 0.2, end = 0.6) +
+  theme_Publication(base_size = 11) +
+  theme(legend.position = "bottom") +
+  labs(
+    title = "Marginal effects by race (unweighted)",
+    subtitle = "IVs are discrimination and micro-aggression composites from factor-analysis-informed item groupings",
+    x = "Race", y = "Marginal effect estimate",
+    color = "IV",
+    shape = "IV",
+    caption = "Controls: age, education, income, homeownership, gender, foreign born, partisanship; state fixed effects.\nSource: National Asian American Survey (2016)"
+  )
 
-p_fed_w <- marginal_df_weighted %>%
-  filter(dv %in% dv_labels[dvs_fed]) %>%
-  plot_marginal("Federal policy attitudes (Weighted)")
-ggsave(here("outputs", "marginal_fed_weighted.png"), p_fed_w, width = 12, height = 6)
+ggsave(
+  here("outputs", "marginal_lf.png"),
+  p_lf,
+  width = 10,
+  height = 4.8
+)
+
+lf_weighted_df <- marginal_df_weighted %>%
+  filter(dv %in% dv_labels[dvs_lf]) %>%
+  mutate(
+    race = factor(race, levels = c("Black", "AAPI", "Latino", "White")),
+    term = factor(term, levels = c("Discrimination", "Micro-aggression"))
+  )
+
+p_lf_w <- lf_weighted_df %>%
+  ggplot(aes(x = race, y = estimate, ymin = conf.low, ymax = conf.high, color = term, shape = term)) +
+  geom_hline(yintercept = 0, linetype = "dotted") +
+  geom_errorbar(
+    position = position_dodge(width = 0.45),
+    width = 0.12,
+    linewidth = 0.7
+  ) +
+  geom_point(
+    position = position_dodge(width = 0.45),
+    size = 2.8
+  ) +
+  geom_label(
+    aes(label = sprintf("%.2f", estimate)),
+    position = position_dodge(width = 0.45),
+    nudge_y = 0.045,
+    size = 3.1,
+    fill = "white",
+    alpha = 0.9,
+    label.size = 0,
+    show.legend = FALSE
+  ) +
+  coord_cartesian(ylim = c(-0.02, 0.5)) +
+  scale_color_grey(start = 0.2, end = 0.6) +
+  theme_Publication(base_size = 11) +
+  theme(legend.position = "bottom") +
+  labs(
+    title = "Marginal effects by race (weighted)",
+    subtitle = "IVs are discrimination and micro-aggression composites from factor-analysis-informed item groupings",
+    x = "Race", y = "Marginal effect estimate",
+    color = "IV",
+    shape = "IV",
+    caption = "Controls: age, education, income, homeownership, gender, foreign born, partisanship; state fixed effects; survey weights.\nSource: National Asian American Survey (2016)"
+  )
+
+  ggsave(
+  here("outputs", "marginal_lf_weighted.png"),
+  p_lf_w,
+  width = 10,
+  height = 4.8
+)
+
+# Side-by-side comparison to make weighting differences explicit
+lf_compare_df <- bind_rows(
+  lf_unweighted_df %>% mutate(spec = "Unweighted"),
+  lf_weighted_df %>% mutate(spec = "Weighted")
+) %>%
+  mutate(spec = factor(spec, levels = c("Unweighted", "Weighted")))
+
+p_lf_compare <- lf_compare_df %>%
+  ggplot(aes(x = race, y = estimate, ymin = conf.low, ymax = conf.high, color = term, shape = term)) +
+  geom_hline(yintercept = 0, linetype = "dotted") +
+  geom_errorbar(
+    position = position_dodge(width = 0.45),
+    width = 0.12,
+    linewidth = 0.7
+  ) +
+  geom_point(
+    position = position_dodge(width = 0.45),
+    size = 2.8
+  ) +
+  geom_label(
+    aes(label = sprintf("%.2f", estimate)),
+    position = position_dodge(width = 0.45),
+    nudge_y = 0.045,
+    size = 3.1,
+    fill = "white",
+    alpha = 0.9,
+    label.size = 0,
+    show.legend = FALSE
+  ) +
+  facet_wrap(~spec, ncol = 2) +
+  coord_cartesian(ylim = c(-0.02, 0.5)) +
+  scale_color_grey(start = 0.2, end = 0.6) +
+  theme_Publication(base_size = 11) +
+  theme(legend.position = "bottom") +
+  labs(
+    title = "Marginal effects by race: unweighted vs weighted",
+    subtitle = "IVs are discrimination and micro-aggression composites from factor-analysis-informed item groupings",
+    x = "Race", y = "Marginal effect estimate",
+    color = "IV",
+    shape = "IV",
+    caption = "Controls: age, education, income, homeownership, gender, foreign born, partisanship; state fixed effects.\nWeighted panel additionally uses survey weights. Source: National Asian American Survey (2016)"
+  )
+
+ggsave(
+  here("outputs", "marginal_lf_compare.png"),
+  p_lf_compare,
+  width = 14,
+  height = 5.2
+)
+
+p_comm_w <- plot_me_family_df(
+  marginal_df_weighted,
+  dvs_comm,
+  dv_labels,
+  "Community commonality (Weighted)",
+  ncol = 2
+)
+
+ggsave(
+  here("outputs", "marginal_comm_weighted.png"),
+  p_comm_w,
+  width = 10,
+  height = 6
+)
+
+p_fed_w <- plot_me_family_df(
+  marginal_df_weighted,
+  dvs_fed,
+  dv_labels,
+  "Federal policy attitudes (Weighted)",
+  ncol = 3
+)
+
+ggsave(
+  here("outputs", "marginal_fed_weighted.png"),
+  p_fed_w,
+  width = 12,
+  height = 6
+)
+
+# Reader-facing policy preference figures (federal policy DVs only)
+plot_policy_marginals <- function(marginal_df, title, weighted = FALSE, y_limits = c(-0.30, 0.30)) {
+  cap <- if (weighted) {
+    "Controls: age, education, income, homeownership, gender, foreign born, partisanship; state fixed effects; survey weights.\nSource: National Asian American Survey (2016)"
+  } else {
+    "Controls: age, education, income, homeownership, gender, foreign born, partisanship; state fixed effects.\nSource: National Asian American Survey (2016)"
+  }
+
+  marginal_df %>%
+    filter(dv %in% unname(dv_labels[dvs_fed])) %>%
+    mutate(
+      race = factor(race, levels = c("Black", "AAPI", "Latino", "White")),
+      dv = factor(dv, levels = unname(dv_labels[dvs_fed]))
+    ) %>%
+    ggplot(aes(x = race, y = estimate, ymin = conf.low, ymax = conf.high, color = term, shape = term)) +
+    geom_hline(yintercept = 0, linetype = "dotted") +
+    geom_errorbar(position = position_dodge(width = 0.45), width = 0.12, linewidth = 0.7) +
+    geom_point(position = position_dodge(width = 0.45), size = 2.5) +
+    geom_label(
+      aes(label = sprintf("%.2f", estimate)),
+      position = position_dodge(width = 0.45),
+      nudge_y = 0.03,
+      size = 2.8,
+      fill = "white",
+      alpha = 0.9,
+      label.size = 0,
+      show.legend = FALSE
+    ) +
+    facet_wrap(~dv, ncol = 3) +
+    coord_cartesian(ylim = y_limits) +
+    scale_color_grey(start = 0.2, end = 0.6) +
+    theme_Publication(base_size = 11) +
+    theme(legend.position = "bottom") +
+    labs(
+      title = title,
+      subtitle = "IVs are discrimination and micro-aggression composites from factor-analysis-informed item groupings",
+      x = "Race", y = "Marginal effect estimate",
+      color = "IV", shape = "IV",
+      caption = cap
+    )
+}
+
+p_policy_unweighted <- plot_policy_marginals(
+  marginal_df_unweighted,
+  "Policy preferences: marginal effects by race (unweighted)",
+  weighted = FALSE
+)
+
+ggsave(
+  here("outputs", "marginal_policy_unweighted.png"),
+  p_policy_unweighted,
+  width = 12,
+  height = 7
+)
+
+p_policy_weighted <- plot_policy_marginals(
+  marginal_df_weighted,
+  "Policy preferences: marginal effects by race (weighted)",
+  weighted = TRUE
+)
+
+ggsave(
+  here("outputs", "marginal_policy_weighted.png"),
+  p_policy_weighted,
+  width = 12,
+  height = 7
+)
+
+# Policy preference coefficient comparison (weighted, additive models)
+policy_terms <- c("discrimination", "micro_aggression", "democrat", "republican")
+df_policy_aapi <- df %>% filter(race == "AAPI")
+
+fit_policy_models <- function(df_in, weighted = TRUE) {
+  map(dvs_fed, function(dv) {
+    lm_robust(
+      as.formula(paste0(
+        dv, " ~ discrimination + micro_aggression + democrat + republican + ",
+        "age + educ6 + income + ownhome + male + forborn"
+      )),
+      data = df_in,
+      fixed_effects = ~states,
+      weights = if (weighted) df_in$weight else NULL
+    )
+  }) %>% set_names(dvs_fed)
+}
+
+plot_policy_assoc <- function(models, title, weighted = TRUE) {
+  coef_df <- map2_dfr(models, names(models), function(m, dv) {
+    broom::tidy(m, conf.int = TRUE) %>%
+      filter(term %in% policy_terms) %>%
+      mutate(dv = dv_labels[dv])
+  }) %>%
+    mutate(
+      term = recode(term,
+        "discrimination" = "Discrimination",
+        "micro_aggression" = "Micro-aggression",
+        "democrat" = "Democrat",
+        "republican" = "Republican"
+      ),
+      term = factor(term, levels = c("Discrimination", "Micro-aggression", "Democrat", "Republican")),
+      dv = factor(dv, levels = unname(dv_labels[dvs_fed]))
+    )
+
+  lim <- range(c(coef_df$conf.low, coef_df$conf.high), na.rm = TRUE)
+  pad <- 0.03
+  cap <- if (weighted) {
+    "AAPI subsample only. Predictors shown: discrimination, micro-aggression, democrat, republican. Controls: age, education, income, homeownership, gender, foreign born; state fixed effects; survey weights.\nSource: National Asian American Survey (2016)"
+  } else {
+    "AAPI subsample only. Predictors shown: discrimination, micro-aggression, democrat, republican. Controls: age, education, income, homeownership, gender, foreign born; state fixed effects.\nSource: National Asian American Survey (2016)"
+  }
+
+  coef_df %>%
+    ggplot(aes(x = term, y = estimate, ymin = conf.low, ymax = conf.high, color = term, shape = term)) +
+    geom_hline(yintercept = 0, linetype = "dotted") +
+    geom_errorbar(width = 0.12, linewidth = 0.7) +
+    geom_point(size = 2.6) +
+    geom_label(
+      aes(label = sprintf("%.2f", estimate)),
+      nudge_y = 0.02,
+      size = 2.8,
+      fill = "white",
+      alpha = 0.9,
+      label.size = 0,
+      show.legend = FALSE
+    ) +
+    facet_wrap(~dv, ncol = 3) +
+    coord_flip(ylim = c(lim[1] - pad, lim[2] + pad)) +
+    scale_color_grey(start = 0.2, end = 0.7) +
+    theme_Publication(base_size = 11) +
+    theme(legend.position = "bottom") +
+    labs(
+      title = title,
+      subtitle = "AAPI-only multivariable regression with state fixed effects",
+      x = "Predictor", y = "Coefficient estimate",
+      color = "Predictor", shape = "Predictor",
+      caption = cap
+    )
+}
+
+policy_models_unweighted <- fit_policy_models(df_policy_aapi, weighted = FALSE)
+policy_models_weighted <- fit_policy_models(df_policy_aapi, weighted = TRUE)
+
+p_policy_assoc_un <- plot_policy_assoc(
+  policy_models_unweighted,
+  "Policy preferences (AAPI only): key predictor comparison (unweighted)",
+  weighted = FALSE
+)
+
+ggsave(
+  here("outputs", "policy_association_comparison_unweighted.png"),
+  p_policy_assoc_un,
+  width = 12,
+  height = 7
+)
+
+p_policy_assoc_w <- plot_policy_assoc(
+  policy_models_weighted,
+  "Policy preferences (AAPI only): key predictor comparison (weighted)",
+  weighted = TRUE
+)
+
+ggsave(
+  here("outputs", "policy_association_comparison_weighted.png"),
+  p_policy_assoc_w,
+  width = 12,
+  height = 7
+)
 ```
 
 # Interaction term plots
@@ -232,7 +620,7 @@ ggsave(here("outputs", "marginal_fed_weighted.png"), p_fed_w, width = 12, height
 # Extract interaction coefficients from all models
 # Weighted only for concise plot
 int_df <- map2_dfr(models_weighted, names(models_weighted), function(m, dv) {
-  tidy(m, conf.int = TRUE) %>%
+  broom::tidy(m, conf.int = TRUE) %>%
     filter(str_detect(term, ":")) %>%
     mutate(dv = dv_labels[dv])
 })
@@ -273,12 +661,13 @@ Test whether discrimination = micro-aggression within each racial group.
 
 ```{r}
 race_levels <- c("Black", "AAPI", "Latino", "White")
+models_for_wald <- models_weighted
 
 wald_results <- map2_dfr(
-  rep(names(models), each = length(race_levels)),
-  rep(race_levels, times = length(models)),
+  rep(names(models_for_wald), each = length(race_levels)),
+  rep(race_levels, times = length(models_for_wald)),
   function(dv, rl) {
-    test_disc_vs_micro(models[[dv]], rl) %>%
+    test_disc_vs_micro(models_for_wald[[dv]], rl) %>%
       mutate(dv = dv_labels[dv])
   }
 )
@@ -313,7 +702,7 @@ The `linkedfate_ethnic` variable is structurally missing for Black and White res
 ```{r}
 df_ethnic <- df %>%
   filter(race %in% c("AAPI", "Latino")) %>%
-  mutate(race = droplevels(race))
+  mutate(race = relevel(droplevels(race), ref = "AAPI"))
 
 # Fit model (no interactions since only 2 groups, use race as covariate)
 model_ethnic <- lm_robust(

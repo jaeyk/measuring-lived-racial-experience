@@ -31,7 +31,7 @@ df_fa_loadings <- function(fa_res){
     
     # Turn rownames into a column 
     fa_df <- fa_df %>%
-        dplyr::add_rownames(var = "Measures")
+        tibble::rownames_to_column(var = "Measures")
     
     # Rename columns and reshape the dataframe 
     fa_df %>%
@@ -43,18 +43,43 @@ df_fa_loadings <- function(fa_res){
             values_to = "Loading")
 }
 
+# plot marginal effects by DV family
+plot_me_family <- function(models, dv_ids, dv_labels, title) {
+    map(dv_ids, \(dv) {
+        plot_slopes(
+            models[[dv]],
+            variables = "linked_fate"   # <-- change if needed
+        ) +
+            labs(y = dv_labels[[dv]])
+    }) |>
+        wrap_plots(ncol = 1) +
+        plot_annotation(title = title)
+}
+
 # Visualize factor loadings 
 visualize_fa_loadings <- function(df){
-    
+
     df %>%
-        ggplot(aes(x = Measures, y = Loading, fill = Loading)) +
+        ggplot(aes(
+            x = tidytext::reorder_within(Measures, abs(Loading), interaction(Factor, race)),
+            y = Loading,
+            fill = Loading
+        )) +
             geom_col() +
             coord_flip() +
-            scale_fill_gradient2(name = "Loading",
-                high = "blue", mid = "white", low = "red", midpoint = 0, guide = F) +
+            tidytext::scale_x_reordered() +
+            scale_fill_gradient2(
+                name = "Loading",
+                low = "firebrick3",
+                mid = "white",
+                high = "navy",
+                midpoint = 0,
+                limits = c(-1, 1),
+                breaks = c(-0.5, 0, 0.5, 1),
+                oob = scales::squish
+            ) +
             labs(y = "Loading Strength", x = "Measures",
-                title = "Factor Analysis Results",
-                caption = "Source: National Asian American Survey (2016)")
+                title = "Factor Analysis Results")
 }
 
 # Turn estimated factor scores as a dataframe
@@ -62,7 +87,7 @@ df_fa_weights <- function(fa_res) {
     fa_res$weights %>%
         unclass() %>%
         as.data.frame() %>%
-        dplyr::add_rownames(var = "Measures") %>%
+        tibble::rownames_to_column(var = "Measures") %>%
             rename("Micro-aggression" = "ML1",
                    "Discrimination" = "ML2") %>%
             pivot_longer(
@@ -161,6 +186,10 @@ group_summarize_weight <- function(base, vars_nested, type) {
 
 # Build regression models 
 ols <- function(df, dv, weights = NULL){
+
+    if (!is.null(weights) && !weights %in% names(df)) {
+        stop(glue::glue("Weight column '{weights}' is missing in the analysis dataframe."))
+    }
     
     # Check if data is multiply imputed (has .imp column with >1 value)
     is_mi <- ".imp" %in% names(df) && length(unique(df$.imp)) > 1
@@ -297,6 +326,10 @@ unnest_model <- function(df, nested_obj, group_label) {
 # Pooled interaction model (race x IV) with state fixed effects
 ols_interaction <- function(df, dv, ref_level = "Black", weights = NULL) {
 
+    if (!is.null(weights) && !weights %in% names(df)) {
+        stop(glue::glue("Weight column '{weights}' is missing in the analysis dataframe."))
+    }
+
     # Check if MI
     is_mi <- ".imp" %in% names(df) && length(unique(df$.imp)) > 1
 
@@ -383,6 +416,13 @@ compute_marginal_effects <- function(model) {
     coefs <- coef(model)
     vcov_mat <- vcov(model)
 
+    # Robust reference-level lookup for pooled models
+    ref_level <- dplyr::coalesce(
+        if (!is.null(model$model$race) && length(levels(model$model$race)) > 0) levels(model$model$race)[1] else NA_character_,
+        if (!is.null(model$xlevels$race) && length(model$xlevels$race) > 0) model$xlevels$race[1] else NA_character_,
+        "Black"
+    )
+
     # Identify race levels from interaction terms
     race_terms <- grep("^race", names(coefs), value = TRUE)
     race_levels <- unique(gsub(".*race", "", race_terms))
@@ -394,7 +434,7 @@ compute_marginal_effects <- function(model) {
         est_ref <- coefs[iv]
         se_ref <- sqrt(vcov_mat[iv, iv])
         results[[length(results) + 1]] <- tibble(
-            race = levels(model$model$race)[1],  # reference level
+            race = ref_level,
             term = iv,
             estimate = est_ref,
             std.error = se_ref,
@@ -435,7 +475,11 @@ test_disc_vs_micro <- function(model, race_level) {
 
     coefs <- coef(model)
     vcov_mat <- vcov(model)
-    ref_level <- levels(model$model$race)[1]
+    ref_level <- dplyr::coalesce(
+        if (!is.null(model$model$race) && length(levels(model$model$race)) > 0) levels(model$model$race)[1] else NA_character_,
+        if (!is.null(model$xlevels$race) && length(model$xlevels$race) > 0) model$xlevels$race[1] else NA_character_,
+        "Black"
+    )
 
     if (race_level == ref_level) {
         # Reference group: test discrimination - micro_aggression = 0

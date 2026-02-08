@@ -1,0 +1,156 @@
+---
+title: "Lived Racial Experience and Policy Preferences"
+author: "Jae Yeon Kim"
+date: today
+format:
+  pdf:
+    toc: true
+    number-sections: true
+  docx:
+    toc: true
+    number-sections: true
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r}
+library(here)
+library(tidyverse)
+library(knitr)
+
+df_all <- read.csv(here::here("processed_data", "augmented_df.csv"))
+```
+
+## Data
+
+This study uses the 2016 National Asian American Survey (NAAS) post-election data. The analytical workflow includes data cleaning and harmonization, multiple imputation, factor-based construct development, and regression modeling with state fixed effects.
+
+## Methods
+
+### Construct measurement
+
+Race-specific exploratory factor analyses (two-factor, oblimin rotation, ML estimation with polychoric correlations) were used to evaluate item structure. Item inclusion followed two rules:
+
+1. Primary mean absolute loading >= 0.30
+2. Loading gap (primary minus secondary) >= 0.10
+
+Construct scores were then computed as row means of retained items.
+
+### Regression models
+
+For linked fate outcomes, we estimate pooled race-interaction models:
+
+$$
+Y_{is}
+= a_s + b_D D_i + b_M M_i
++ \sum_{r \in \{AAPI, Latino, White\}}
+\left[g_r R_{ir} + d_r (D_i R_{ir}) + e_r (M_i R_{ir})\right]
++ X_i' t + u_{is}
+$$
+
+For policy-preference outcomes, we estimate additive multivariable regressions on the AAPI-only subsample to compare the associations of discrimination, micro-aggression, and partisanship:
+
+$$
+Y^{policy}_{is}
+= a_s + b_D D_i + b_M M_i + b_{Dem} Democrat_i + b_{Rep} Republican_i
++ X_i' t + u_{is}
+$$
+
+Plain-language model form: outcome = state fixed effect + key predictors of interest + controls + error.
+
+Here, \(D_i\) is discrimination, \(M_i\) is micro-aggression, \(R_{ir}\) are race indicators (Black reference), \(a_s\) are state fixed effects, and \(X_i\) includes age, education, income, homeownership, gender, and foreign-born status. In policy models, Democrat and Republican indicators are included explicitly as focal predictors.
+
+### Interpretation
+
+For linked fate models, race-specific marginal effects for discrimination are:
+
+$$
+ME_D(Black) = b_D,\quad
+ME_D(r) = b_D + d_r
+$$
+
+Plain-language marginal effect: for each race, it is the discrimination slope in that race group.
+
+Similarly for micro-aggression:
+
+$$
+ME_M(Black) = b_M,\quad
+ME_M(r) = b_M + e_r
+$$
+
+Interpretation for linked fate: a positive marginal effect indicates that higher lived-racial-experience exposure is associated with higher linked-fate support within that race group.
+
+Interpretation for policy models: each coefficient shows the average conditional association between that predictor (discrimination, micro-aggression, Democrat, Republican) and policy support among AAPI respondents, holding other included covariates and state fixed effects constant.
+
+### Standard errors
+
+Model estimation uses heteroskedasticity-robust standard errors from `lm_robust`.
+
+For multiply-imputed data, pooled uncertainty follows Rubin-style combination:
+
+1. Compute the average within-imputation variance across `m` imputations.
+2. Compute between-imputation variance from variation in coefficient estimates across imputations.
+3. Compute total variance as: average within-imputation variance + `(1 + 1/m)` times between-imputation variance.
+4. Standard errors are the square root of this total variance.
+
+Confidence intervals and significance tests are derived from these pooled standard errors.
+
+## Results
+
+### Factor-based measure construction
+
+As shown in @fig-factor, retained items align with the two intended constructs.
+
+```{r}
+#| label: fig-factor
+#| fig-cap: "Retained survey items and loading strength by construct."
+#| fig-align: "center"
+#| out-width: "92%"
+knitr::include_graphics(here::here("outputs", "factor_analysis.png"))
+```
+
+### Linked fate
+
+Race-specific linked-fate marginal effects are shown in @fig-lf-unw and @fig-lf-w.
+
+```{r}
+#| label: fig-lf-unw
+#| fig-cap: "Linked fate marginal effects by race (unweighted)."
+#| fig-align: "center"
+#| out-width: "92%"
+knitr::include_graphics(here::here("outputs", "marginal_lf.png"))
+```
+
+```{r}
+#| label: fig-lf-w
+#| fig-cap: "Linked fate marginal effects by race (weighted)."
+#| fig-align: "center"
+#| out-width: "92%"
+knitr::include_graphics(here::here("outputs", "marginal_lf_weighted.png"))
+```
+
+### Policy preferences
+
+Policy-preference results are presented as AAPI-only coefficient comparisons among discrimination, micro-aggression, and partisanship predictors. We report both unweighted and weighted specifications.
+
+```{r}
+#| label: fig-policy-compare-unw
+#| fig-cap: "Policy preferences (AAPI only): coefficient comparison of discrimination, micro-aggression, and partisanship (unweighted)."
+#| fig-align: "center"
+#| out-width: "92%"
+knitr::include_graphics(here::here("outputs", "policy_association_comparison_unweighted.png"))
+```
+
+```{r}
+#| label: fig-policy-compare-w
+#| fig-cap: "Policy preferences (AAPI only): coefficient comparison of discrimination, micro-aggression, and partisanship (weighted)."
+#| fig-align: "center"
+#| out-width: "92%"
+knitr::include_graphics(here::here("outputs", "policy_association_comparison_weighted.png"))
+```
+
+## Discussion
+
+The results indicate that lived racial experience is multidimensional and that its association with political attitudes varies across race groups and outcomes. Presenting both weighted and unweighted estimates highlights how design-based weighting affects inference while preserving a consistent substantive pattern across model families.

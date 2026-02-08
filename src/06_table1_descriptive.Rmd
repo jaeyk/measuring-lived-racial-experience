@@ -1,0 +1,106 @@
+---
+title: "Table 1: Descriptive statistics"
+author: "Jae Yeon Kim"
+output:
+  html_document:
+    toc: false
+    theme: united
+---
+
+```{r}
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load(
+  tidyverse,
+  here,
+  knitr,
+  kableExtra
+)
+```
+
+```{r}
+df <- read.csv(here("processed_data", "augmented_df.csv"))
+
+# Use one imputation for descriptive presentation and align with core race groups in pooled models
+if ("imp" %in% names(df)) {
+  df <- df %>% filter(imp == 1)
+}
+
+race_levels <- c("AAPI", "Black", "Latino", "White")
+df <- df %>%
+  filter(race %in% race_levels) %>%
+  mutate(race = factor(race, levels = race_levels))
+
+var_map <- tribble(
+  ~section, ~variable, ~label,
+  "Main predictors", "discrimination", "Discrimination index",
+  "Main predictors", "micro_aggression", "Micro-aggression index",
+  "Linked fate", "linkedfate_race", "Linked fate (racial)",
+  "Policy preferences", "inequality", "Support: reducing inequality",
+  "Policy preferences", "bank_reg", "Support: regulating banks",
+  "Policy preferences", "minimum_wage", "Support: minimum wage",
+  "Policy preferences", "rich_tax", "Support: taxing the rich",
+  "Policy preferences", "free_college", "Support: free college",
+  "Controls", "age", "Age (scaled 0-1)",
+  "Controls", "educ6", "Education (scaled 0-1)",
+  "Controls", "income", "Income (scaled 0-1)",
+  "Controls", "ownhome", "Homeowner",
+  "Controls", "male", "Male",
+  "Controls", "forborn", "Foreign born",
+  "Controls", "democrat", "Democrat",
+  "Controls", "republican", "Republican",
+  "Weights", "weight", "Survey weight"
+)
+
+vars <- var_map$variable
+
+fmt_stat <- function(m, s) sprintf("%.3f (%.3f)", m, s)
+
+overall <- df %>%
+  summarise(across(all_of(vars), list(mean = ~mean(.x, na.rm = TRUE), sd = ~sd(.x, na.rm = TRUE)))) %>%
+  pivot_longer(everything(), names_to = "key", values_to = "value") %>%
+  separate(key, into = c("variable", "stat"), sep = "_(?=[^_]+$)") %>%
+  pivot_wider(names_from = stat, values_from = value) %>%
+  mutate(Overall = fmt_stat(mean, sd)) %>%
+  select(variable, Overall)
+
+by_race <- df %>%
+  group_by(race) %>%
+  summarise(across(all_of(vars), list(mean = ~mean(.x, na.rm = TRUE), sd = ~sd(.x, na.rm = TRUE))), .groups = "drop") %>%
+  pivot_longer(-race, names_to = "key", values_to = "value") %>%
+  separate(key, into = c("variable", "stat"), sep = "_(?=[^_]+$)") %>%
+  pivot_wider(names_from = stat, values_from = value) %>%
+  mutate(cell = fmt_stat(mean, sd)) %>%
+  select(race, variable, cell) %>%
+  pivot_wider(names_from = race, values_from = cell)
+
+n_row <- tibble(
+  section = "Sample size",
+  label = "N",
+  Overall = as.character(nrow(df)),
+  AAPI = as.character(sum(df$race == "AAPI")),
+  Black = as.character(sum(df$race == "Black")),
+  Latino = as.character(sum(df$race == "Latino")),
+  White = as.character(sum(df$race == "White"))
+)
+
+table1 <- var_map %>%
+  left_join(overall, by = c("variable")) %>%
+  left_join(by_race, by = c("variable")) %>%
+  select(section, label, Overall, AAPI, Black, Latino, White) %>%
+  bind_rows(n_row)
+
+# Save CSV for reproducibility
+write.csv(table1, here("outputs", "table1_descriptive.csv"), row.names = FALSE)
+```
+
+```{r}
+kbl(
+  table1,
+  caption = "Table 1. Descriptive statistics (imputation 1; mean with SD in parentheses)",
+  col.names = c("Section", "Variable", "Overall", "AAPI", "Black", "Latino", "White"),
+  align = c("l", "l", "c", "c", "c", "c", "c")
+) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE) %>%
+  collapse_rows(columns = 1, valign = "top") %>%
+  save_kable(here("outputs", "table1_descriptive.html"))
+```

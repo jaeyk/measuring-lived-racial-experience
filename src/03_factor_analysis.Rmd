@@ -17,6 +17,7 @@ pacman::p_load(
         psych, # for psychological tools 
         factoextra, # for extracting and visualizing the results of multivariate data analyses 
         FactoMineR, # for multivariate exploratory data analysis and data mining
+        tidytext, # facet-safe reordering for loadings plot
         conflicted, # for resolving conflicting functions
         ggthemes, # for fancy ggplot themes
         ggrepel, 
@@ -56,11 +57,30 @@ imputed <- imputed # Keep full imputed for later export
  
  I selected the variables related to the multi-dimensions of lived racial experience from the survey. This time, I renamed these variable names using the `rename function()` from the `dplyr` package, as they will appear in the plots I will soon create.
  
- ```{r}
- # Selecting variables 
- vars <- imputed_single %>% 
-   select(matches("micro|discrim")) %>%
-   select(-matches("index"))
+```{r}
+# Selecting variables 
+vars <- imputed_single %>% 
+  select(matches("micro|discrim")) %>%
+  select(-matches("index"))
+
+# Human-readable labels for survey items (for reader-facing figures/tables)
+item_label_map <- c(
+  "discrim_hired" = "Not hired",
+  "discrim_promotion" = "Passed over for promotion",
+  "discrim_fired" = "Fired",
+  "discrim_housing" = "Housing discrimination",
+  "discrim_police" = "Police mistreatment",
+  "discrim_neighbor" = "Hostility from neighbors",
+  "micro_honest" = "Treated as if dishonest",
+  "micro_afraid" = "Others acted afraid",
+  "micro_namecall" = "Called names/insulted",
+  "micro_harassed" = "Harassed or threatened",
+  "micro_english" = "Assumed poor English",
+  "micro_service" = "Received poorer service",
+  "micro_creative" = "Assumed not creative",
+  "micro_pronounce" = "Name mispronounced",
+  "micro_stem" = "Stereotyped as STEM-strong"
+)
 ```
 
 ## 3. Factor analysis 
@@ -101,21 +121,26 @@ vars_nested <- vars %>%
 
 ### 3.3. Data visualization
 
-Here, the goal is to show how I visualized the relationship between each question item and three factors.
+Here, the goal is to inspect race-specific loading patterns. This detailed plot is saved as a supplemental figure.
 
 ```{r}
 vars_nested %>%
   unnest(fa_loadings) %>%
+  filter(abs(Loading) >= 0.20) %>%
   filter(race != "Multiracial") %>%
   visualize_fa_loadings() +
-  facet_grid(Factor~race)
+  facet_grid(Factor~race, scales = "free_y", space = "free_y") +
+  labs(
+    subtitle = "Race-specific EFA loadings (2-factor oblimin rotation)",
+    caption = "Used to define item groupings for constructs. Composite scores are unweighted item means. Source: National Asian American Survey (2016)"
+  )
 
-ggsave(here("outputs/factor_analysis.png"), height = 10, width = 8)
+ggsave(here("outputs/factor_analysis_full.png"), height = 10, width = 8)
 ```
 
 # Creating composite variables 
 
-I created composite variables by calculating the mean of survey items related to each estimated factor score.
+I created composite variables using an explicit loading-based assignment rule. Items with high cross-loadings are excluded before scoring.
 
 ## Export composite variables 
 
@@ -124,18 +149,85 @@ I created composite variables by calculating the mean of survey items related to
 vars$respid <- imputed_single$respid
 
 # NOTE: Factors were estimated on .imp==1.
-# To compute scores for ALL imputations, we should ideally project the loadings onto all datasets.
-# However, a simpler accepted approach is to use the raw mean scores of the items identified by FA.
-# Since the composites are just rowMeans of specific items, we can calculate this for the full `imputed` dataframe.
- 
-# Create composite variables for the FULL imputed dataset
-disc_vars <- names(vars %>% select(contains("disc")))
-micro_vars <- names(vars %>% select(contains("micro")))
+# Build a global item-to-factor mapping from race-specific loadings:
+# 1) average absolute loading by item x factor across races
+# 2) keep items with primary loading >= 0.30
+# 3) drop high cross-loaders (primary-secondary < 0.10)
+load_map <- vars_nested %>%
+  unnest(fa_loadings) %>%
+  filter(race != "Multiracial") %>%
+  group_by(Measures, Factor) %>%
+  summarise(
+    mean_loading = mean(Loading, na.rm = TRUE),
+    mean_abs_loading = mean(abs(Loading), na.rm = TRUE),
+    .groups = "drop"
+  )
+
+item_assignment <- load_map %>%
+  group_by(Measures) %>%
+  arrange(desc(mean_abs_loading), .by_group = TRUE) %>%
+  mutate(rank = row_number()) %>%
+  summarise(
+    assigned_factor = Factor[1],
+    primary_loading = mean_abs_loading[1],
+    secondary_loading = mean_abs_loading[2],
+    loading_gap = primary_loading - secondary_loading,
+    .groups = "drop"
+  ) %>%
+  mutate(
+    keep = primary_loading >= 0.30 & loading_gap >= 0.10
+  )
+
+# Keep only well-separated items per factor
+disc_vars <- item_assignment %>%
+  filter(keep, assigned_factor == "Discrimination") %>%
+  pull(Measures)
+
+micro_vars <- item_assignment %>%
+  filter(keep, assigned_factor == "Micro-aggression") %>%
+  pull(Measures)
+
+# Export mapping for transparency
+item_assignment_labeled <- item_assignment %>%
+  mutate(
+    measure_label = recode(Measures, !!!item_label_map, .default = Measures)
+  )
+
+write.csv(item_assignment_labeled, here("outputs", "fa_item_assignment.csv"), row.names = FALSE)
+
+# Main reader-facing figure: only retained items used for scoring
+kept_plot_df <- item_assignment %>%
+  filter(keep) %>%
+  mutate(
+    measure_label = recode(Measures, !!!item_label_map, .default = Measures),
+    measure_label = stringr::str_wrap(measure_label, width = 28),
+    measure_label = tidytext::reorder_within(measure_label, primary_loading, assigned_factor)
+  )
+
+p_kept <- kept_plot_df %>%
+  ggplot(aes(x = measure_label, y = primary_loading, fill = assigned_factor)) +
+  geom_col(width = 0.7) +
+  coord_flip() +
+  tidytext::scale_x_reordered() +
+  facet_wrap(~assigned_factor, ncol = 1, scales = "free_y") +
+  scale_fill_grey(start = 0.35, end = 0.75) +
+  labs(
+    title = "Construct measures retained for scoring",
+    subtitle = "Items retained by loading rule: primary >= 0.30 and loading gap >= 0.10",
+    x = "Survey items",
+    y = "Primary loading (mean absolute across races)",
+    fill = "Construct",
+    caption = "Source: National Asian American Survey (2016)"
+  ) +
+  theme_pubr(base_size = 11) +
+  theme(legend.position = "bottom")
+
+ggsave(here("outputs", "factor_analysis.png"), p_kept, height = 7, width = 8)
 
 augmented_df <- imputed %>%
   mutate(
-    discrimination = rowMeans(select(., all_of(disc_vars))),
-    micro_aggression = rowMeans(select(., all_of(micro_vars)))
+    discrimination = rowMeans(select(., all_of(disc_vars)), na.rm = TRUE),
+    micro_aggression = rowMeans(select(., all_of(micro_vars)), na.rm = TRUE)
   )
 
 # Final cleanup 
@@ -144,4 +236,3 @@ augmented_df <- janitor::clean_names(augmented_df)
 # Save long format
 write.csv(augmented_df, here("processed_data", "augmented_df.csv"), row.names = FALSE)
 ```
-
